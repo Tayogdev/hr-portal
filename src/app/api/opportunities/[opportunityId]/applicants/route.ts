@@ -14,11 +14,14 @@
 import { NextResponse } from 'next/server';
 import pool from '@/dbconfig/dbconfig';
 
-export async function GET(
-  request: Request,
-  { params }: { params: { opportunityId: string } }
-) {
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export async function GET(req: Request) {
   try {
+    const url = new URL(req.url);
+    const opportunityId = url.pathname.split('/')[3]; // Get opportunityId from URL path
+    
     // First check if the opportunity exists
     const opportunityQuery = `
       SELECT id, role, title 
@@ -26,7 +29,7 @@ export async function GET(
       WHERE id = $1
     `;
     
-    const opportunityResult = await pool.query(opportunityQuery, [params.opportunityId]);
+    const opportunityResult = await pool.query(opportunityQuery, [opportunityId]);
     
     if (opportunityResult.rows.length === 0) {
       return NextResponse.json({
@@ -37,7 +40,7 @@ export async function GET(
       }, { status: 404 });
     }
 
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || 'ALL';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -61,7 +64,7 @@ export async function GET(
       WHERE oa."opportunityId" = $1 ${statusCondition}
     `;
     
-    const countResult = await pool.query(countQuery, [params.opportunityId]);
+    const countResult = await pool.query(countQuery, [opportunityId]);
     const totalCount = parseInt(countResult.rows[0].count);
 
     if (totalCount === 0) {
@@ -101,7 +104,7 @@ export async function GET(
       LIMIT $2 OFFSET $3
     `;
 
-    const result = await pool.query(query, [params.opportunityId, limit, offset]);
+    const result = await pool.query(query, [opportunityId, limit, offset]);
     
     return NextResponse.json({
       success: true,

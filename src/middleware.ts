@@ -9,7 +9,7 @@ export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
   // ✅ Add all public path **prefixes** here
-  const publicPrefixes = ['/login'];
+  const publicPrefixes = ['/login'];  
 
   // ✅ Check if current path starts with any public prefix
   const isPublicPage = publicPrefixes.some(prefix => path.startsWith(prefix));

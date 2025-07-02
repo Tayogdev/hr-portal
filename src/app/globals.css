@@ -2,6 +2,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+
 /* Date Picker Custom Styles */
 .react-datepicker {
   font-family: inherit;

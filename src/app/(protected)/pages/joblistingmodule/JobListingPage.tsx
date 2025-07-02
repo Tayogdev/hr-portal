@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
+import DatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
 
 type Job = {
-  id: number;
+  id: string;
   role: string;
   status: 'Live' | 'Closed' | 'Completed';
   type: string;
@@ -18,77 +20,95 @@ type Job = {
   active: boolean;
 };
 
-const jobs: Job[] = [
-  {
-    id: 1,
-    role: 'User Experience and Research Intern',
-    status: 'Live',
-    type: 'Internship',
-    posted: '08.07.2024',
-    due: '19.08.2024',
-    applicants: 80,
-    needs: '0 / 1',
-    action: 'Review Applicants',
-    active: true,
-  },
-  {
-    id: 2,
-    role: 'User Interface Design Intern',
-    status: 'Live',
-    type: 'Internship',
-    posted: '08.07.2024',
-    due: '19.08.2024',
-    applicants: 260,
-    needs: '0 / 4',
-    action: 'Review Applicants',
-    active: true,
-  },
-  {
-    id: 3,
-    role: 'Software Development',
-    status: 'Closed',
-    type: 'Full Time',
-    posted: '08.11.2023',
-    due: '08.02.2024',
-    applicants: 620,
-    needs: '4 / 4',
-    action: 'Completed',
-    active: false,
-  },
-  {
-    id: 4,
-    role: 'AI ML & Machine Learning Engineer',
-    status: 'Closed',
-    type: 'Internship',
-    posted: '08.01.2024',
-    due: '08.02.2024',
-    applicants: 206,
-    needs: '3 / 4',
-    action: 'Completed',
-    active: false,
-  },
-  {
-    id: 5,
-    role: 'AI ML & Machine Learning Engineer',
-    status: 'Closed',
-    type: 'Full Time',
-    posted: '08.1.2023',
-    due: '08.02.2024',
-    applicants: 602,
-    needs: '4 / 4',
-    action: 'Completed',
-    active: false,
-  },
-];
+type PaginationInfo = {
+  total: number;
+  page: number;
+  totalPages: number;
+  hasMore: boolean;
+};
 
 export default function JobListingPage(): React.JSX.Element {
-  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
-  const [jobStatuses, setJobStatuses] = useState<{ [key: number]: 'Live' | 'Closed' }>({});
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [jobStatuses, setJobStatuses] = useState<{ [key: string]: 'Live' | 'Closed' }>({});
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>(() => {
+    const today = new Date();
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    return [today, nextMonth];
+  });
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    total: 0,
+    page: 1,
+    totalPages: 1,
+    hasMore: false
+  });
+  
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
+  const calendarDropdownRef = useRef<HTMLDivElement>(null);
 
-  const handleStatusChange = (jobId: number, newStatus: 'Live' | 'Closed') => {
+  const [startDate, endDate] = dateRange;
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Handle status dropdown
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
+        setOpenDropdownId(null);
+      }
+      
+      // Handle calendar dropdown
+      if (calendarDropdownRef.current && !calendarDropdownRef.current.contains(event.target as Node)) {
+        setIsCalendarOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    fetchJobs(currentPage);
+  }, [currentPage]);
+
+  const fetchJobs = async (page: number) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/opportunities?page=${page}&limit=10`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch jobs');
+      }
+      const data = await response.json();
+      setJobs(data.opportunities);
+      setPagination(data.pagination);
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatusChange = (jobId: string, newStatus: 'Live' | 'Closed') => {
     setJobStatuses(prev => ({ ...prev, [jobId]: newStatus }));
     setOpenDropdownId(null);
   };
+
+  const formatDate = (date: Date | null) => {
+    if (!date) return '';
+    return date.toLocaleDateString('en-GB');
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8 bg-[#F8F9FC] min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">Loading jobs...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 bg-[#F8F9FC] min-h-screen">
@@ -96,11 +116,53 @@ export default function JobListingPage(): React.JSX.Element {
         <div>
           <h1 className="text-2xl font-semibold mb-2">Job Listing</h1>
           <p className="text-gray-500">
-            Here is your job listing from 3rd Nov 2023 to 17th Aug 2024
+            Here is your job listing from {formatDate(startDate)} to {formatDate(endDate)}
           </p>
         </div>
-        <div className="text-gray-500">
-          3rd Nov 2023 to 17th Aug 2024
+        <div className="flex items-center gap-2 relative">
+          <div className="text-gray-500">
+            {formatDate(startDate)} to {formatDate(endDate)}
+          </div>
+          <div className="relative" ref={calendarDropdownRef}>
+            <button
+              onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+              className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-5 h-5 text-gray-500"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"
+                />
+              </svg>
+            </button>
+            {isCalendarOpen && (
+              <div className="absolute right-0 mt-2 z-50">
+                <DatePicker
+                  selected={startDate}
+                  onChange={(update: [Date | null, Date | null]) => {
+                    setDateRange(update);
+                    if (update[0] && update[1]) {
+                      setIsCalendarOpen(false);
+                    }
+                  }}
+                  startDate={startDate}
+                  endDate={endDate}
+                  selectsRange
+                  inline
+                  monthsShown={2}
+                  calendarClassName="shadow-xl"
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -146,35 +208,37 @@ export default function JobListingPage(): React.JSX.Element {
                     </div>
                   </td>
                   <td className="px-6 py-4 relative">
-                    <button
-                      onClick={() => setOpenDropdownId(openDropdownId === job.id ? null : job.id)}
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        currentStatus === 'Live'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {currentStatus}
-                      <span className="ml-1">▼</span>
-                    </button>
-                    {openDropdownId === job.id && (
-                      <div className="absolute z-10 mt-1 bg-white rounded-md shadow-lg border border-gray-200">
-                        <div className="py-1">
-                          <button
-                            onClick={() => handleStatusChange(job.id, 'Live')}
-                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          >
-                            Live
-                          </button>
-                          <button
-                            onClick={() => handleStatusChange(job.id, 'Closed')}
-                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          >
-                            Closed
-                          </button>
+                    <div ref={statusDropdownRef}>
+                      <button
+                        onClick={() => setOpenDropdownId(openDropdownId === job.id ? null : job.id)}
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          currentStatus === 'Live'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {currentStatus}
+                        <span className="ml-1">▼</span>
+                      </button>
+                      {openDropdownId === job.id && (
+                        <div className="absolute z-10 mt-1 bg-white rounded-md shadow-lg border border-gray-200">
+                          <div className="py-1">
+                            <button
+                              onClick={() => handleStatusChange(job.id, 'Live')}
+                              className="block w-full px-4 py-2 text-sm text-left hover:bg-gray-100"
+                            >
+                              Live
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(job.id, 'Closed')}
+                              className="block w-full px-4 py-2 text-sm text-left hover:bg-gray-100"
+                            >
+                              Closed
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </td>
                   <td className={`px-6 py-4 ${isDisabled ? 'text-gray-400' : 'text-gray-500'}`}>
                     {job.type}
@@ -198,11 +262,11 @@ export default function JobListingPage(): React.JSX.Element {
                           variant="outline"
                           className="text-[#4F46E5] border-[#4F46E5] hover:bg-[#4F46E5] hover:text-white"
                         >
-                          Review Applicants
+                          {job.action}
                         </Button>
                       </Link>
                     ) : (
-                      <span className="text-gray-400">Completed</span>
+                      <span className="text-gray-400">{job.action}</span>
                     )}
                   </td>
                 </tr>
@@ -210,6 +274,29 @@ export default function JobListingPage(): React.JSX.Element {
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="mt-6 flex justify-center items-center gap-4">
+        <Button
+          variant="outline"
+          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+          disabled={currentPage === 1}
+          className="text-[#4F46E5] border-[#4F46E5] hover:bg-[#4F46E5] hover:text-white"
+        >
+          Previous
+        </Button>
+        <span className="text-gray-600">
+          Page {pagination.page} of {pagination.totalPages}
+        </span>
+        <Button
+          variant="outline"
+          onClick={() => setCurrentPage(prev => prev + 1)}
+          disabled={!pagination.hasMore}
+          className="text-[#4F46E5] border-[#4F46E5] hover:bg-[#4F46E5] hover:text-white"
+        >
+          Next
+        </Button>
       </div>
     </div>
   );

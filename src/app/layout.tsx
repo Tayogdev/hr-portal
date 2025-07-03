@@ -15,8 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        
+      <body className="bg-white text-gray-900 antialiased">
         <SessionWrapper>
           {children}
         </SessionWrapper>
@@ -24,3 +23,4 @@ export default function RootLayout({
     </html>
   );
 }
+

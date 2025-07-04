@@ -259,7 +259,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
               )}
             </>
           ) : (
-            <p className="text-gray-500">Select an applicant to view details.</p>
+            <p className="text-gray-500">Select an applicant to view detail.</p>
           )}
         </div>
       </div>

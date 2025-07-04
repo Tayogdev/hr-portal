@@ -9,13 +9,22 @@ export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
   // ✅ Add all public path **prefixes** here
-  const publicPrefixes = ['/login'];  
+  const publicPrefixes = [
+    '/login',
+    '/api/auth',  // Allow authentication API routes
+  ];  
 
   // ✅ Check if current path starts with any public prefix
   const isPublicPage = publicPrefixes.some(prefix => path.startsWith(prefix));
 
-  // 🔁 Redirect logic
+  // 🔁 Redirect logic for pages, return 401 for API routes
   if (!isAuth && !isPublicPage) {
+    if (path.startsWith('/api/')) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please login to access this resource' },
+        { status: 401 }
+      );
+    }
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
@@ -26,7 +35,7 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-// Protect all routes except static/API
+// Protect all routes except static files and Next.js internals
 export const config = {
-  matcher: ['/((?!_next|api|favicon.ico|.*\\.svg$).*)'],
+  matcher: ['/((?!_next|favicon.ico|.*\\.svg$).*)'],
 };

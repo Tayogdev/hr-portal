@@ -1,22 +1,34 @@
 // app/job/[jobId]/page.tsx
 "use client";
 
+<<<<<<< Updated upstream
 import React, { useState, useEffect, useRef, use } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Share2, SlidersHorizontal } from "lucide-react";
+=======
+import React, { useState, useEffect, useRef, use } from 'react';
+import Image from 'next/image';
+import { Button } from '@/components/ui/button';
+import { Share2, SlidersHorizontal } from 'lucide-react';
+import ApplicantList from '../../pages/joblistingmodule/ApplicantList';
+>>>>>>> Stashed changes
 
 type TabId = "all" | "shortlisted" | "final" | "rejected";
 
-type Applicant = {
-  id: number;
-  name: string;
-  title: string;
-  score: number;
-  tags: string[];
-  appliedDate: string;
+type Opportunity = {
+  id: string;
+  role: string;
+  institute: string;
+  location: string;
+  vacancies: number;
+  maxParticipants: number;
+  regStartDate: string;
+  regEndDate: string;
+  status: 'Live' | 'Closed';
 };
 
+<<<<<<< Updated upstream
 const mockApplicants: Applicant[] = [
   {
     id: 1,
@@ -77,9 +89,48 @@ export default function JobDetailPage({
   const [activeSection, setActiveSection] = useState<
     "none" | "profile" | "resume" | "contact" | "files" | "shortlist"
   >("none");
+=======
+export default function JobDetailPage({ params }: { params: Promise<{ jobId: string }> }) {
+  const resolvedParams = use(params);
+  const [selectedTab, setSelectedTab] = useState<TabId>('all');
+  const [selectedFilter, setSelectedFilter] = useState<string>('All');
+  const [selectedApplicantIndex, setSelectedApplicantIndex] = useState<number>(0);
+  const [jobStatus, setJobStatus] = useState<'Live' | 'Closed'>('Live');
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<'none' | 'profile' | 'resume' | 'contact' | 'files' | 'shortlist'>('none');
+  const [opportunity, setOpportunity] = useState<Opportunity | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+>>>>>>> Stashed changes
 
   const statusRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const fetchOpportunity = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/opportunities/${resolvedParams.jobId}`);
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.message || 'Failed to fetch opportunity details');
+        }
+
+        setOpportunity(data.data);
+        setJobStatus(data.data.status);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch opportunity details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (resolvedParams.jobId) {
+      fetchOpportunity();
+    }
+  }, [resolvedParams.jobId]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -94,6 +145,7 @@ export default function JobDetailPage({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+<<<<<<< Updated upstream
  const tabs: { id: TabId; label: string }[] = [
   { id: 'all', label: 'All Applicants (80)' },
   { id: 'shortlisted', label: 'Shortlisted (4)' },
@@ -109,15 +161,78 @@ export default function JobDetailPage({
     { id: "potential", label: "Potential", count: "(32)" },
     { id: "consider", label: "Consider", count: "(16)" },
     { id: "declined", label: "Declined", count: "(8)" },
+=======
+  const tabs = [
+    { id: 'all' as TabId, label: 'All Applicants' },
+    { id: 'shortlisted', label: 'Shortlisted' },
+    { id: 'final', label: 'Final Selections' },
+    { id: 'rejected', label: 'Rejected' },
   ];
 
+  const filters = [
+    { id: 'all', label: 'All', status: 'ALL' },
+    { id: 'strong', label: 'Strong Fit', status: 'STRONG_FIT' },
+    { id: 'good', label: 'Good Fit', status: 'GOOD_FIT' },
+    { id: 'rejected', label: 'Rejected', status: 'REJECTED' },
+    { id: 'final', label: 'Final', status: 'FINAL' },
+>>>>>>> Stashed changes
+  ];
+
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <div className="text-gray-500">Loading job details...</div>
+      </div>
+    );
+  }
+
+  if (error || !opportunity) {
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <div className="text-red-500">{error || 'Failed to load job details'}</div>
+      </div>
+    );
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
   return (
+<<<<<<< Updated upstream
     <div className="p-4 md:p-6">
       {/* Header */}
       <div className="bg-white rounded-lg p-4 mb-6 flex flex-col md:flex-row justify-between gap-4">
         <div className="flex gap-4">
           <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center">
             <Image src="/job-icon.png" alt="Icon" width={24} height={24} />
+=======
+    <div className="p-6">
+      <div className="bg-white rounded-lg p-4 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded bg-[#F3F4F6] flex items-center justify-center">
+              <Image src="/job-icon.png" alt="Company Logo" width={24} height={24} className="rounded" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">{opportunity.role}</h1>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span>{opportunity.institute}</span>
+                <span>•</span>
+                <span>{opportunity.location}</span>
+                <span>•</span>
+                <span>Needs {opportunity.vacancies}/{opportunity.maxParticipants}</span>
+              </div>
+              <div className="text-sm text-gray-500">
+                Posted on {formatDate(opportunity.regStartDate)} • 
+                Closing on {formatDate(opportunity.regEndDate)}
+              </div>
+            </div>
+>>>>>>> Stashed changes
           </div>
           <div>
             <h1 className="text-lg md:text-xl font-semibold text-gray-900">
@@ -208,6 +323,7 @@ export default function JobDetailPage({
           {tabs.map((tab) => (
             <button
               key={tab.id}
+<<<<<<< Updated upstream
               onClick={() => {
 setSelectedTab(tab.id);
                 setSelectedApplicant(null);
@@ -218,6 +334,10 @@ setSelectedTab(tab.id);
                   ? "text-[#6366F1] font-medium"
                   : "text-gray-500 hover:text-gray-700"
               }`}
+=======
+              onClick={() => { setSelectedTab(tab.id as TabId); setSelectedApplicantIndex(0); setActiveSection('none'); }}
+              className={`py-4 px-1 relative ${selectedTab === tab.id ? 'text-[#6366F1] font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+>>>>>>> Stashed changes
             >
               {tab.label}
               {selectedTab === tab.id && (
@@ -240,7 +360,7 @@ setSelectedTab(tab.id);
                 : "border border-gray-300 text-gray-700 hover:bg-gray-50"
             }`}
           >
-            {filter.label} {filter.count}
+            {filter.label}
           </button>
         ))}
         <Button
@@ -257,6 +377,7 @@ setSelectedTab(tab.id);
         {/* Left Column: Applicants */}
         <div className="bg-white rounded-lg p-4 shadow-sm">
           <h2 className="text-lg font-semibold mb-4">Applicants</h2>
+<<<<<<< Updated upstream
           {mockApplicants.map((applicant) => {
             const isSelected = selectedApplicant?.id === applicant.id;
             return (
@@ -388,6 +509,28 @@ setSelectedTab(tab.id);
           ) : (
             <p className="text-gray-500">Select an applicant to view details.</p>
           )}
+=======
+          <ApplicantList 
+            selected={selectedApplicantIndex} 
+            opportunityId={resolvedParams.jobId} 
+          />
+        </div>
+
+        {/* Right side panel for applicant details */}
+        <div className="col-span-2 bg-white rounded-lg p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Applicant Details</h2>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm">Message</Button>
+              <Button variant="outline" size="sm">Schedule Interview</Button>
+                </div>
+              </div>
+
+          {/* Add your applicant details content here */}
+          <div className="text-gray-500 text-center py-8">
+            Select an applicant to view their details
+                </div>
+>>>>>>> Stashed changes
         </div>
       </div>
     </div>

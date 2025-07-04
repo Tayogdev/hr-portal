@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
+import { useSession } from 'next-auth/react';
 
 type Job = {
   id: string;
@@ -28,6 +29,7 @@ type PaginationInfo = {
 };
 
 export default function JobListingPage(): React.JSX.Element {
+  const { data: session } = useSession();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
@@ -83,6 +85,7 @@ export default function JobListingPage(): React.JSX.Element {
         throw new Error('Failed to fetch jobs');
       }
       const data = await response.json();
+      console.log('Fetched jobs data:', data); // Debug log
       setJobs(data.opportunities);
       setPagination(data.pagination);
     } catch (error) {
@@ -118,6 +121,11 @@ export default function JobListingPage(): React.JSX.Element {
           <p className="text-gray-500">
             Here is your job listing from {formatDate(startDate)} to {formatDate(endDate)}
           </p>
+          {session?.user && (
+            <p className="text-sm text-blue-600 mt-1">
+              Showing opportunities for: {session.user.email}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2 relative">
           <div className="text-gray-500">

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import DatePicker from 'react-datepicker';
-import "react-datepicker/dist/react-datepicker.css";
+import 'react-datepicker/dist/react-datepicker.css';
 import { useSession } from 'next-auth/react';
 
 type Job = {
@@ -48,7 +48,7 @@ export default function JobListingPage(): React.JSX.Element {
     totalPages: 1,
     hasMore: false
   });
-  
+
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const calendarDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -56,21 +56,17 @@ export default function JobListingPage(): React.JSX.Element {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Handle status dropdown
       if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
         setOpenDropdownId(null);
       }
-      
-      // Handle calendar dropdown
+
       if (calendarDropdownRef.current && !calendarDropdownRef.current.contains(event.target as Node)) {
         setIsCalendarOpen(false);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -81,11 +77,8 @@ export default function JobListingPage(): React.JSX.Element {
     try {
       setLoading(true);
       const response = await fetch(`/api/opportunities?page=${page}&limit=10`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch jobs');
-      }
+      if (!response.ok) throw new Error('Failed to fetch jobs');
       const data = await response.json();
-      console.log('Fetched jobs data:', data); // Debug log
       setJobs(data.opportunities);
       setPagination(data.pagination);
     } catch (error) {
@@ -101,8 +94,7 @@ export default function JobListingPage(): React.JSX.Element {
   };
 
   const formatDate = (date: Date | null) => {
-    if (!date) return '';
-    return date.toLocaleDateString('en-GB');
+    return date ? date.toLocaleDateString('en-GB') : '';
   };
 
   if (loading) {
@@ -114,11 +106,12 @@ export default function JobListingPage(): React.JSX.Element {
   }
 
   return (
-    <div className="p-8 bg-[#F8F9FC] min-h-screen">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 sm:p-6 md:p-8 bg-[#F8F9FC] min-h-screen">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-semibold mb-2">Job Listing</h1>
-          <p className="text-gray-500">
+          <h1 className="text-xl md:text-2xl font-semibold mb-1">Job Listing</h1>
+          <p className="text-gray-500 text-sm">
             Here is your job listing from {formatDate(startDate)} to {formatDate(endDate)}
           </p>
           {session?.user && (
@@ -128,7 +121,7 @@ export default function JobListingPage(): React.JSX.Element {
           )}
         </div>
         <div className="flex items-center gap-2 relative">
-          <div className="text-gray-500">
+          <div className="text-gray-500 text-sm">
             {formatDate(startDate)} to {formatDate(endDate)}
           </div>
           <div className="relative" ref={calendarDropdownRef}>
@@ -157,9 +150,7 @@ export default function JobListingPage(): React.JSX.Element {
                   selected={startDate}
                   onChange={(update: [Date | null, Date | null]) => {
                     setDateRange(update);
-                    if (update[0] && update[1]) {
-                      setIsCalendarOpen(false);
-                    }
+                    if (update[0] && update[1]) setIsCalendarOpen(false);
                   }}
                   startDate={startDate}
                   endDate={endDate}
@@ -174,8 +165,9 @@ export default function JobListingPage(): React.JSX.Element {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl shadow bg-white">
-        <table className="min-w-full text-sm">
+      {/* Table Section */}
+      <div className="w-full overflow-x-auto rounded-xl shadow bg-white">
+        <table className="min-w-[800px] w-full text-sm">
           <thead>
             <tr className="bg-[#4A5568] text-white">
               <th className="px-6 py-4 text-left font-medium">Job Role</th>
@@ -192,13 +184,11 @@ export default function JobListingPage(): React.JSX.Element {
             {jobs.map((job) => {
               const isDisabled = !job.active;
               const currentStatus = jobStatuses[job.id] || job.status;
-              
+
               return (
                 <tr
                   key={job.id}
-                  className={`border-b last:border-0 hover:bg-gray-50 transition-colors ${
-                    isDisabled ? 'bg-gray-50' : ''
-                  }`}
+                  className={`border-b last:border-0 hover:bg-gray-50 transition-colors ${isDisabled ? 'bg-gray-50' : ''}`}
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -248,21 +238,11 @@ export default function JobListingPage(): React.JSX.Element {
                       )}
                     </div>
                   </td>
-                  <td className={`px-6 py-4 ${isDisabled ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {job.type}
-                  </td>
-                  <td className={`px-6 py-4 ${isDisabled ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {job.posted}
-                  </td>
-                  <td className={`px-6 py-4 ${isDisabled ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {job.due}
-                  </td>
-                  <td className={`px-6 py-4 ${isDisabled ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {job.applicants}
-                  </td>
-                  <td className={`px-6 py-4 ${isDisabled ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {job.needs}
-                  </td>
+                  <td className={`px-6 py-4 ${isDisabled ? 'text-gray-400' : 'text-gray-500'}`}>{job.type}</td>
+                  <td className={`px-6 py-4 ${isDisabled ? 'text-gray-400' : 'text-gray-500'}`}>{job.posted}</td>
+                  <td className={`px-6 py-4 ${isDisabled ? 'text-gray-400' : 'text-gray-500'}`}>{job.due}</td>
+                  <td className={`px-6 py-4 ${isDisabled ? 'text-gray-400' : 'text-gray-500'}`}>{job.applicants}</td>
+                  <td className={`px-6 py-4 ${isDisabled ? 'text-gray-400' : 'text-gray-500'}`}>{job.needs}</td>
                   <td className="px-6 py-4">
                     {job.active ? (
                       <Link href={`/job-listing/${job.id}`}>
@@ -284,8 +264,8 @@ export default function JobListingPage(): React.JSX.Element {
         </table>
       </div>
 
-      {/* Pagination Controls */}
-      <div className="mt-6 flex justify-center items-center gap-4">
+      {/* Pagination */}
+      <div className="mt-6 flex flex-col sm:flex-row justify-center items-center gap-3">
         <Button
           variant="outline"
           onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
@@ -294,7 +274,7 @@ export default function JobListingPage(): React.JSX.Element {
         >
           Previous
         </Button>
-        <span className="text-gray-600">
+        <span className="text-gray-600 text-sm">
           Page {pagination.page} of {pagination.totalPages}
         </span>
         <Button

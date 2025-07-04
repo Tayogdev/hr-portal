@@ -9,7 +9,7 @@ export default function ProtectedGroupLayout({
 }) {
   return (
     <ProtectedLayout>
-      <div className="flex flex-col md:flex-row min-h-screen overflow-hidden">
+      <div className="flex flex-col md:flex-row min-h-screen">
         {/* Sidebar */}
         <CustomNavbar />
 

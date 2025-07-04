@@ -18,21 +18,23 @@ export default function Header(): React.JSX.Element | null {
   const { data: session, status } = useSession();
   const pathname = usePathname();
 
-  // Hide header while loading session or unauthenticated
   if (status === 'loading' || !session) return null;
 
-  // 🛑 Hide Header on /login or public pages
-  const hiddenRoutes = ['/login', '/register']; // add more if needed
+  const hiddenRoutes = ['/login', '/register'];
   if (hiddenRoutes.includes(pathname)) return null;
 
   const basePath = `/${pathname.split('/')[1]}`;
   const pageTitle = routeTitleMap[pathname] || routeTitleMap[basePath] || 'Page';
 
   return (
-    <header className="w-full px-4 md:px-8 py-4 bg-white border-b border-gray-200 flex justify-between items-center">
-      <div className="text-xl font-semibold text-gray-800">{pageTitle}</div>
-      <div className="flex items-center gap-4">
-        <button className="relative p-2 rounded-full hover:bg-gray-100">
+    <header className="w-full bg-white border-b border-gray-200 px-4 sm:px-6 md:px-8 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      {/* Title */}
+      <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">{pageTitle}</h1>
+
+      {/* Action Buttons */}
+      <div className="flex items-center flex-wrap gap-3">
+        {/* Notification */}
+        <button className="relative p-2 rounded-full hover:bg-gray-100 transition">
           <svg
             width="20"
             height="20"
@@ -59,10 +61,11 @@ export default function Header(): React.JSX.Element | null {
           <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
         </button>
 
+        {/* Post Job */}
         <Link href="/job-listing/new">
-          <button className="flex items-center gap-2 bg-[#4F8FF0] text-white px-4 py-2 rounded-md hover:bg-[#3B77D3] transition">
-            <span className="text-lg">+</span>
-            <span className="text-sm font-medium">Post a New Job</span>
+          <button className="flex items-center gap-2 bg-[#4F8FF0] text-white px-4 py-2 rounded-md hover:bg-[#3B77D3] transition text-sm">
+            <span className="text-lg font-bold">+</span>
+            <span className="font-medium">Post a New Job</span>
           </button>
         </Link>
       </div>

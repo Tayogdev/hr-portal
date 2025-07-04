@@ -13,16 +13,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md space-y-6">
-        <h1 className="text-3xl font-bold text-center text-blue-700">Welcome to HR Portal</h1>
-        <p className="text-center text-gray-600">Sign in to continue</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 sm:px-6 lg:px-8">
+      <div className="bg-white p-6 sm:p-8 rounded-lg shadow-lg w-full max-w-sm sm:max-w-md md:max-w-lg space-y-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-center text-blue-700">Welcome to HR Portal</h1>
+        <p className="text-center text-gray-600 text-sm sm:text-base">Sign in to continue</p>
 
         <button
           aria-label="Sign in with Google"
           onClick={() => handleLogin('google')}
           disabled={loadingProvider === 'google'}
-          className="flex items-center gap-3 w-full border px-4 py-2 rounded text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
+          className="flex items-center justify-center gap-3 w-full border px-4 py-2 rounded text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
         >
           <Image
             src="https://www.svgrepo.com/show/475656/google-color.svg"
@@ -39,7 +39,7 @@ export default function LoginPage() {
           aria-label="Sign in with LinkedIn"
           onClick={() => handleLogin('linkedin')}
           disabled={loadingProvider === 'linkedin'}
-          className="flex items-center gap-3 w-full bg-[#0077b5] px-4 py-2 rounded text-white hover:bg-[#005c92] transition disabled:opacity-50"
+          className="flex items-center justify-center gap-3 w-full bg-[#0077b5] px-4 py-2 rounded text-white hover:bg-[#005c92] transition disabled:opacity-50"
         >
           <Image
             src="https://www.svgrepo.com/show/448234/linkedin.svg"

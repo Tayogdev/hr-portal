@@ -1,4 +1,3 @@
-// app/(protected)/layout.tsx
 import CustomNavbar from './sidebar/CustomNavbar';
 import Header from './header/Header';
 import ProtectedLayout from '../../components/ProtectedLayout';
@@ -10,13 +9,19 @@ export default function ProtectedGroupLayout({
 }) {
   return (
     <ProtectedLayout>
-      <div className="flex flex-col min-h-screen md:flex-row">
+      <div className="flex flex-col md:flex-row min-h-screen overflow-hidden">
+        {/* Sidebar */}
         <CustomNavbar />
-        <main className="flex-1 bg-[#F8FAFC]">
+
+        {/* Main content area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
           <Header />
-          <div className="p-4">{children}</div>
-        </main>
+          <main className="flex-1 overflow-y-auto p-4 bg-[#F8FAFC]">
+            {children}
+          </main>
+        </div>
       </div>
     </ProtectedLayout>
   );
 }
+  

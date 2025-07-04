@@ -1,11 +1,12 @@
+// app/job/[jobId]/page.tsx
 "use client";
 
-import React, { useState, useEffect, useRef, use } from 'react';
-import Image from 'next/image';
-import { Button } from '@/components/ui/button';
-import { Share2, SlidersHorizontal } from 'lucide-react';
+import React, { useState, useEffect, useRef, use } from "react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Share2, SlidersHorizontal } from "lucide-react";
 
-type TabId = 'all' | 'shortlisted' | 'final' | 'rejected';
+type TabId = "all" | "shortlisted" | "final" | "rejected";
 
 type Applicant = {
   id: number;
@@ -59,15 +60,23 @@ const mockApplicants: Applicant[] = [
   },
 ];
 
-export default function JobDetailPage({ params }: { params: Promise<{ jobId: string }> }) {
+export default function JobDetailPage({
+  params,
+}: {
+  params: Promise<{ jobId: string }>;
+}) {
   const resolvedParams = use(params);
-  const [selectedTab, setSelectedTab] = useState<TabId>('all');
-  const [selectedFilter, setSelectedFilter] = useState<string>('All');
-  const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(mockApplicants[0]);
-  const [jobStatus, setJobStatus] = useState<'Live' | 'Closed'>('Live');
+  const [selectedTab, setSelectedTab] = useState<TabId>("all");
+  const [selectedFilter, setSelectedFilter] = useState<string>("All");
+  const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(
+    mockApplicants[0]
+  );
+  const [jobStatus, setJobStatus] = useState<"Live" | "Closed">("Live");
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState<'none' | 'profile' | 'resume' | 'contact' | 'files' | 'shortlist'>('none');
+  const [activeSection, setActiveSection] = useState<
+    "none" | "profile" | "resume" | "contact" | "files" | "shortlist"
+  >("none");
 
   const statusRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -81,109 +90,171 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
         setMenuOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const tabs = [
-    { id: 'all' as TabId, label: 'All Applicants (80)' },
-    { id: 'shortlisted', label: 'Shortlisted (4)' },
-    { id: 'final', label: 'Final Selections (0)' },
-    { id: 'rejected', label: 'Rejected (0)' },
-  ];
+ const tabs: { id: TabId; label: string }[] = [
+  { id: 'all', label: 'All Applicants (80)' },
+  { id: 'shortlisted', label: 'Shortlisted (4)' },
+  { id: 'final', label: 'Final Selections (0)' },
+  { id: 'rejected', label: 'Rejected (0)' },
+];
+
 
   const filters = [
-    { id: 'all', label: 'All', count: '(80)' },
-    { id: 'strong', label: 'Strong Fit', count: '(8)' },
-    { id: 'good', label: 'Good Fit', count: '(16)' },
-    { id: 'potential', label: 'Potential', count: '(32)' },
-    { id: 'consider', label: 'Consider', count: '(16)' },
-    { id: 'declined', label: 'Declined', count: '(8)' },
+    { id: "all", label: "All", count: "(80)" },
+    { id: "strong", label: "Strong Fit", count: "(8)" },
+    { id: "good", label: "Good Fit", count: "(16)" },
+    { id: "potential", label: "Potential", count: "(32)" },
+    { id: "consider", label: "Consider", count: "(16)" },
+    { id: "declined", label: "Declined", count: "(8)" },
   ];
 
   return (
-    <div className="p-6">
-      <div className="bg-white rounded-lg p-4 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded bg-[#F3F4F6] flex items-center justify-center">
-              <Image src="/job-icon.png" alt="Company Logo" width={24} height={24} className="rounded" />
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">User Experience and Research Intern</h1>
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span>Tech Japan</span><span>•</span><span>Remote</span><span>•</span><span>Needs 0/1</span>
-              </div>
-              <div className="text-sm text-gray-500">Posted on 08.07.2024 • Closing on 19.08.2024</div>
-            </div>
+    <div className="p-4 md:p-6">
+      {/* Header */}
+      <div className="bg-white rounded-lg p-4 mb-6 flex flex-col md:flex-row justify-between gap-4">
+        <div className="flex gap-4">
+          <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center">
+            <Image src="/job-icon.png" alt="Icon" width={24} height={24} />
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative" ref={statusRef}>
+          <div>
+            <h1 className="text-lg md:text-xl font-semibold text-gray-900">
+              User Experience and Research Intern
+            </h1>
+            <p className="text-sm text-gray-500">
+              Tech Japan • Remote • Needs 0/1
+            </p>
+            <p className="text-sm text-gray-500">
+              Posted on 08.07.2024 • Closing on 19.08.2024
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap" ref={statusRef}>
+          <button
+            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
+              jobStatus === "Live"
+                ? "bg-green-100 text-green-800"
+                : "bg-gray-200 text-gray-600"
+            }`}
+            onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
+          >
+            {jobStatus} ▼
+          </button>
+          {statusDropdownOpen && (
+            <div className="absolute mt-1 bg-white border rounded shadow z-10 w-32">
               <button
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-medium ${jobStatus === 'Live' ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'}`}
-                onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
+                className="w-full text-left px-3 py-2 hover:bg-gray-100"
+                onClick={() => {
+                  setJobStatus("Live");
+                  setStatusDropdownOpen(false);
+                }}
               >
-                {jobStatus} ▼
+                Live
               </button>
-              {statusDropdownOpen && (
-                <div className="absolute right-0 mt-1 bg-white border rounded shadow z-10 w-32">
-                  <button className="w-full text-left px-3 py-2 hover:bg-gray-100" onClick={() => { setJobStatus('Live'); setStatusDropdownOpen(false); }}>Live</button>
-                  <button className="w-full text-left px-3 py-2 hover:bg-gray-100" onClick={() => { setJobStatus('Closed'); setStatusDropdownOpen(false); }}>Closed</button>
-                </div>
-              )}
-            </div>
-            <Button variant="outline" size="sm" className="text-gray-700">Job Details</Button>
-            <Button variant="ghost" size="icon" className="text-gray-500 hover:bg-gray-100" onClick={() => { navigator.clipboard.writeText(window.location.href); alert('Job link copied to clipboard!'); }} title="Share">
-              <Share2 className="w-5 h-5" />
-            </Button>
-            <div className="relative" ref={menuRef}>
-              <button className="p-2 hover:bg-gray-100 rounded-full" onClick={() => setMenuOpen(!menuOpen)}>
-                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 13a1 1 0 100-2 1 1 0 000 2zM19 13a1 1 0 100-2 1 1 0 000 2zM5 13a1 1 0 100-2 1 1 0 000 2z" />
-                </svg>
+              <button
+                className="w-full text-left px-3 py-2 hover:bg-gray-100"
+                onClick={() => {
+                  setJobStatus("Closed");
+                  setStatusDropdownOpen(false);
+                }}
+              >
+                Closed
               </button>
-              {menuOpen && (
-                <div className="absolute right-0 mt-1 bg-white border rounded shadow z-10 w-40">
-                  <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">Edit Job</button>
-                  <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">Delete Job</button>
-                </div>
-              )}
             </div>
+          )}
+          <Button variant="outline" size="sm" className="text-gray-700">
+            Job Details
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-gray-500 hover:bg-gray-100"
+            onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              alert("Job link copied to clipboard!");
+            }}
+          >
+            <Share2 className="w-5 h-5" />
+          </Button>
+          <div className="relative" ref={menuRef}>
+            <button
+              className="p-2 hover:bg-gray-100 rounded-full"
+              onClick={() => setMenuOpen(!menuOpen)}
+            >
+              <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 13a1 1 0 100-2 1 1 0 000 2zM19 13a1 1 0 100-2 1 1 0 000 2zM5 13a1 1 0 100-2 1 1 0 000 2z" />
+              </svg>
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 mt-1 bg-white border rounded shadow z-10 w-40">
+                <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">
+                  Edit Job
+                </button>
+                <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">
+                  Delete Job
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="border-b border-gray-200 mb-6">
-        <div className="flex gap-8">
+      {/* Tabs */}
+      <div className="border-b border-gray-200 mb-4 md:mb-6 overflow-x-auto">
+        <div className="flex gap-4 md:gap-8 whitespace-nowrap">
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => { setSelectedTab(tab.id as TabId); setSelectedApplicant(null); setActiveSection('none'); }}
-              className={`py-4 px-1 relative ${selectedTab === tab.id ? 'text-[#6366F1] font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+              onClick={() => {
+setSelectedTab(tab.id);
+                setSelectedApplicant(null);
+                setActiveSection("none");
+              }}
+              className={`py-2 md:py-4 px-1 relative ${
+                selectedTab === tab.id
+                  ? "text-[#6366F1] font-medium"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
             >
               {tab.label}
-              {selectedTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6366F1]"></div>}
+              {selectedTab === tab.id && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6366F1]" />
+              )}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-6">
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 md:gap-4 mb-4 md:mb-6">
         {filters.map((filter) => (
           <button
             key={filter.id}
             onClick={() => setSelectedFilter(filter.label)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium ${selectedFilter === filter.label ? 'bg-[#6366F1] text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+            className={`px-3 md:px-4 py-1.5 rounded-full text-sm font-medium ${
+              selectedFilter === filter.label
+                ? "bg-[#6366F1] text-white"
+                : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+            }`}
           >
             {filter.label} {filter.count}
           </button>
         ))}
-        <Button variant="outline" size="sm" className="ml-auto flex items-center gap-2 text-sm border-gray-300 text-gray-700 hover:bg-gray-50">
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-auto flex items-center gap-2 text-sm border-gray-300 text-gray-700 hover:bg-gray-50"
+        >
           <SlidersHorizontal className="w-4 h-4" /> Shortlist by filters
         </Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      {/* Grid layout */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Left Column: Applicants */}
         <div className="bg-white rounded-lg p-4 shadow-sm">
           <h2 className="text-lg font-semibold mb-4">Applicants</h2>
           {mockApplicants.map((applicant) => {
@@ -191,21 +262,40 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
             return (
               <div
                 key={applicant.id}
-                onClick={() => { setSelectedApplicant(applicant); setActiveSection('none'); }}
-                className={`flex gap-4 cursor-pointer p-4 border-l-4 ${isSelected ? 'border-[#4F46E5] bg-gray-50' : 'border-transparent'} hover:bg-gray-50`}
+                onClick={() => {
+                  setSelectedApplicant(applicant);
+                  setActiveSection("none");
+                }}
+                className={`flex gap-4 cursor-pointer p-4 border-l-4 ${
+                  isSelected ? "border-[#4F46E5] bg-gray-50" : "border-transparent"
+                } hover:bg-gray-50`}
               >
                 <div className="w-12 h-12 rounded-full overflow-hidden">
-                  <Image src="/avatar-placeholder.png" alt={applicant.name} width={48} height={48} className="object-cover w-full h-full" />
+                  <Image
+                    src="/avatar-placeholder.png"
+                    alt={applicant.name}
+                    width={48}
+                    height={48}
+                    className="object-cover w-full h-full"
+                  />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-sm">{applicant.name}</h3>
+                  <h3 className="font-semibold text-gray-900 text-sm">
+                    {applicant.name}
+                  </h3>
                   <p className="text-sm text-gray-600">{applicant.title}</p>
                   <div className="text-sm text-[#6366F1] mt-1 flex flex-wrap gap-x-1">
-                    {applicant.tags.map((tag, idx) => (<span key={idx} className="text-blue-600">{tag}</span>))}
+                    {applicant.tags.map((tag, idx) => (
+                      <span key={idx} className="text-blue-600">
+                        {tag}
+                      </span>
+                    ))}
                   </div>
                   <div className="mt-2 flex justify-between text-sm text-gray-500">
                     <span>Applied {applicant.appliedDate}</span>
-                    <span className="text-green-600 font-semibold">Score: {applicant.score}</span>
+                    <span className="text-green-600 font-semibold">
+                      Score: {applicant.score}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -213,44 +303,81 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
           })}
         </div>
 
-        <div className="col-span-2 bg-white rounded-2xl shadow p-6">
+        {/* Right Column: Applicant Details */}
+        <div className="md:col-span-2 bg-white rounded-2xl shadow p-4 md:p-6">
           {selectedApplicant ? (
             <>
-              <div className="flex justify-between items-start">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">{selectedApplicant.name}</h2>
-                  <p className="text-sm text-gray-700 mt-1">{selectedApplicant.title}</p>
+                  <h2 className="text-lg md:text-xl font-semibold text-gray-900">
+                    {selectedApplicant.name}
+                  </h2>
+                  <p className="text-sm text-gray-700 mt-1">
+                    {selectedApplicant.title}
+                  </p>
                 </div>
                 <div className="text-gray-500 text-xl font-bold">⋯</div>
               </div>
+
               <div className="flex flex-wrap gap-2 text-sm text-indigo-600 font-medium mt-4">
-                {selectedApplicant.tags.map((tag, idx) => (<span key={idx}>{tag}</span>))}
+                {selectedApplicant.tags.map((tag, idx) => (
+                  <span key={idx}>{tag}</span>
+                ))}
               </div>
 
               <div className="flex flex-wrap gap-3 justify-between items-center mt-4">
-                <div className="flex gap-3 flex-wrap">
-                  <button onClick={() => setActiveSection(activeSection === 'profile' ? 'none' : 'profile')} className="rounded-full border px-4 py-1 text-sm text-gray-700 border-gray-300 hover:bg-gray-100">Profile</button>
-                  <button onClick={() => setActiveSection(activeSection === 'resume' ? 'none' : 'resume')} className="rounded-full border px-4 py-1 text-sm text-gray-700 border-gray-300 hover:bg-gray-100">Resume/ CV</button>
-                  <button onClick={() => setActiveSection(activeSection === 'contact' ? 'none' : 'contact')} className="rounded-full border px-4 py-1 text-sm text-gray-700 border-gray-300 hover:bg-gray-100">Contacts</button>
-                  <button onClick={() => setActiveSection(activeSection === 'files' ? 'none' : 'files')} className="rounded-full border px-4 py-1 text-sm text-gray-700 border-gray-300 hover:bg-gray-100">2 files ▼</button>
+                <div className="flex gap-2 flex-wrap">
+                  {["profile", "resume", "contact", "files"].map((section) => (
+                    <button
+                      key={section}
+                      onClick={() =>
+                        setActiveSection(activeSection === section ? "none" : section as any)
+                      }
+                      className="rounded-full border px-4 py-1 text-sm text-gray-700 border-gray-300 hover:bg-gray-100"
+                    >
+                      {section === "files" ? "2 files ▼" : section.charAt(0).toUpperCase() + section.slice(1)}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {activeSection === 'profile' && (
-                <div className="mt-6"><h4 className="text-md font-semibold mb-2">Profile Summary</h4><p className="text-gray-700 text-sm">Hi Raj, how are you?</p></div>
-              )}
-              {activeSection === 'resume' && (
-                <div className="mt-6 w-full h-[700px]">
-                  <iframe src="/resume-sample.pdf" className="w-full h-full rounded-md border" title="Resume PDF" />
+              {activeSection === "profile" && (
+                <div className="mt-6">
+                  <h4 className="text-md font-semibold mb-2">Profile Summary</h4>
+                  <p className="text-gray-700 text-sm">Hi Raj, how are you?</p>
                 </div>
               )}
-              {activeSection === 'files' && (
+
+              {activeSection === "resume" && (
+                <div className="mt-6 w-full h-[500px] md:h-[700px]">
+                  <iframe
+                    src="/resume-sample.pdf"
+                    className="w-full h-full rounded-md border"
+                    title="Resume PDF"
+                  />
+                </div>
+              )}
+
+              {activeSection === "files" && (
                 <div className="mt-6 bg-gray-50 border rounded-md p-4 space-y-2">
-                  <a href="/portfolio.pdf" target="_blank" className="block text-indigo-600 hover:underline">Portfolio.pdf</a>
-                  <a href="/case-study.pdf" target="_blank" className="block text-indigo-600 hover:underline">Case Study.pdf</a>
+                  <a
+                    href="/portfolio.pdf"
+                    target="_blank"
+                    className="block text-indigo-600 hover:underline"
+                  >
+                    Portfolio.pdf
+                  </a>
+                  <a
+                    href="/case-study.pdf"
+                    target="_blank"
+                    className="block text-indigo-600 hover:underline"
+                  >
+                    Case Study.pdf
+                  </a>
                 </div>
               )}
-              {activeSection === 'contact' && (
+
+              {activeSection === "contact" && (
                 <div id="contact-info" className="mt-10">
                   <h4 className="text-md font-semibold mb-2">Contact Info</h4>
                   <p>Email: example@example.com</p>

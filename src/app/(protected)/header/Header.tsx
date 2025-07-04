@@ -4,8 +4,9 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { Bell } from 'lucide-react';
 
-const routeTitleMap: { [key: string]: string } = {
+const routeTitleMap: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/job-listing': 'Job Listing',
   '/job-listing/new': 'Post a New Job',
@@ -27,47 +28,29 @@ export default function Header(): React.JSX.Element | null {
   const pageTitle = routeTitleMap[pathname] || routeTitleMap[basePath] || 'Page';
 
   return (
-    <header className="w-full bg-white border-b border-gray-200 px-4 sm:px-6 md:px-8 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-      {/* Title */}
-      <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">{pageTitle}</h1>
+    <header className="w-full bg-white border-b border-gray-200 px-4 sm:px-6 md:px-8 py-4 sticky top-0 z-40">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        {/* Page Title */}
+        <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">
+          {pageTitle}
+        </h1>
 
-      {/* Action Buttons */}
-      <div className="flex items-center flex-wrap gap-3">
-        {/* Notification */}
-        <button className="relative p-2 rounded-full hover:bg-gray-100 transition">
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="text-gray-600"
-          >
-            <path
-              d="M10 2C7.79086 2 6 3.79086 6 6V8C6 9.5913 5.36786 11.1174 4.24264 12.2426L3 13.5H17L15.7574 12.2426C14.6321 11.1174 14 9.5913 14 8V6C14 3.79086 12.2091 2 10 2Z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M8 16C8 17.1046 8.89543 18 10 18C11.1046 18 12 17.1046 12 16"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-        </button>
-
-        {/* Post Job */}
-        <Link href="/job-listing/new">
-          <button className="flex items-center gap-2 bg-[#4F8FF0] text-white px-4 py-2 rounded-md hover:bg-[#3B77D3] transition text-sm">
-            <span className="text-lg font-bold">+</span>
-            <span className="font-medium">Post a New Job</span>
+        {/* Notification + Post Job */}
+        <div className="flex items-center gap-3">
+          <button className="relative p-2 rounded-full hover:bg-gray-100 transition">
+            <Bell className="w-5 h-5 text-gray-600" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
           </button>
-        </Link>
+
+          {(pathname === '/dashboard' || pathname.startsWith('/job-listing')) && (
+            <Link href="/job-listing/new">
+              <button className="flex items-center gap-2 bg-[#4F8FF0] text-white px-4 py-2 rounded-md hover:bg-[#3B77D3] transition text-sm whitespace-nowrap">
+                <span className="text-lg font-bold">+</span>
+                <span className="font-medium">Post a New Job</span>
+              </button>
+            </Link>
+          )}
+        </div>
       </div>
     </header>
   );

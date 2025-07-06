@@ -15,6 +15,7 @@ import { getToken } from 'next-auth/jwt';
 
 export async function GET(request: NextRequest) {
   try {
+<<<<<<< Updated upstream
     // Get the user's token
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
     
@@ -27,6 +28,18 @@ export async function GET(request: NextRequest) {
     const userId = token.sub;
     console.log('Fetching opportunities for user:', userId); // Debug log
 
+=======
+    // Check for authentication
+    const token = await getToken({ req: request });
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please login to access this resource' },
+        { status: 401 }
+      );
+    }
+
+>>>>>>> Stashed changes
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');

@@ -15,7 +15,11 @@
     "@types/react-datepicker": "^7.0.0",
     "axios": "^1.10.0",
     "class-variance-authority": "^0.7.1",
+<<<<<<< Updated upstream
     "clsx": "^2.1.1",
+=======
+    "config": "^4.0.0",
+>>>>>>> Stashed changes
     "date": "^2.0.6",
     "date-fns": "^4.1.0",
     "geist": "^1.4.2",
@@ -40,7 +44,11 @@
     "eslint": "^9",
     "eslint-config-next": "15.3.4",
     "tailwindcss": "^4",
+<<<<<<< Updated upstream
     "tw-animate-css": "^1.3.5",
     "typescript": "5.8.3"
+=======
+    "typescript": "^5.8.3"
+>>>>>>> Stashed changes
   }
 }

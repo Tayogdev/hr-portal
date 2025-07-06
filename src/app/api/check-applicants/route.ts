@@ -9,9 +9,15 @@
 
 import { NextResponse } from 'next/server';
 import pool from '@/dbconfig/dbconfig';
+import { validateAPIRoute } from '@/lib/utils';
+import { type NextRequest } from 'next/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Validate authentication
+    const authError = await validateAPIRoute(request);
+    if (authError) return authError;
+
     // Check if table exists first
     const tableExistsQuery = `
       SELECT EXISTS (

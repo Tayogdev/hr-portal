@@ -5,8 +5,8 @@ import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Share2, SlidersHorizontal } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useParams } from "next/navigation";
+// import { useRouter } from "next/navigation"; // Removed useRouter as it's unused
+// import { useParams } from "next/navigation"; // Removed useParams as it's unused
 import { AssignTaskModal } from './AssignTaskModal';
 import { ScheduleInterviewModal } from './ScheduleInterviewModal';
 import { format } from "date-fns";
@@ -77,23 +77,22 @@ const mockApplicants: ApplicantWithTask[] = [
 ];
 
 export default function JobDetailPage() {
-  const router = useRouter();
-  const params = useParams();
-  const jobId = params?.jobId as string;
+  // const _router = useRouter(); // Removed
+  // const _params = useParams(); // Removed
+  // const _jobId = _params?.jobId as string; // Removed
   const [markAsOpen, setMarkAsOpen] = useState(false);
   const [applicants, setApplicants] = useState<ApplicantWithTask[]>(mockApplicants);
   const [shortlistedApplicants, setShortlistedApplicants] = useState<Applicant[]>([]);
   const [isAssignTaskModalOpen, setIsAssignTaskModalOpen] = useState(false);
   const [isScheduleInterviewModalOpen, setIsScheduleInterviewModalOpen] = useState(false);
 
-const [plusMenuOpen, setPlusMenuOpen] = useState(false); 
+  const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<TabId>("all");
   const [selectedFilter, setSelectedFilter] = useState<string>("All");
-  // Ensure selectedApplicant can be ApplicantWithTask
-const [selectedApplicant, setSelectedApplicant] = useState<ApplicantWithTask | null>(null);
+  const [selectedApplicant, setSelectedApplicant] = useState<ApplicantWithTask | null>(null);
   const [jobStatus, setJobStatus] = useState<"Live" | "Closed">("Live");
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);  
+  const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<Section>("none");
 
   const statusRef = useRef<HTMLDivElement>(null);
@@ -115,6 +114,7 @@ const [selectedApplicant, setSelectedApplicant] = useState<ApplicantWithTask | n
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
 
   const tabs: { id: TabId; label: string }[] = [
     { id: "all", label: `All Applicants (${applicants.length})` },
@@ -464,11 +464,11 @@ const [selectedApplicant, setSelectedApplicant] = useState<ApplicantWithTask | n
                         if (selectedApplicant) {
                           // Prevent adding duplicates to shortlistedApplicants
                           if (!shortlistedApplicants.some(app => app.id === selectedApplicant.id)) {
-                             setShortlistedApplicants((prev) => [...prev, selectedApplicant]);
-                          }
-                          setSelectedTab("shortlisted");
+                               setShortlistedApplicants((prev) => [...prev, selectedApplicant]);
+                           }
+                           setSelectedTab("shortlisted");
                           // You might want to automatically select this applicant again in the new tab
-                          // or let the default behavior (first applicant of the tab) occur.
+                          // or let the default behavior (first applicant of the new tab) occur.
                           // For now, it will likely select the first applicant in the 'shortlisted' array.
                         }
                       }}
@@ -494,7 +494,7 @@ const [selectedApplicant, setSelectedApplicant] = useState<ApplicantWithTask | n
               </div>
 
               {/* Dynamic Assign/View Task Button and Schedule Interview Button */}
-              
+
 
 {selectedTab === "shortlisted" && selectedApplicant && (
   <div className="flex justify-end gap-2 mt-8">

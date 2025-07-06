@@ -28,19 +28,19 @@ export async function GET(request: NextRequest) {
 
     const url = new URL(request.url);
     const opportunityId = url.pathname.split('/')[3];
-    
+
     try {
       await pool.query('SELECT NOW()');
 
       // First check if the opportunity exists
       const opportunityQuery = `
-        SELECT id, role, title 
-        FROM "opportunities" 
+        SELECT id, role, title
+        FROM "opportunities"
         WHERE id = $1
       `;
-      
+
       const opportunityResult = await pool.query(opportunityQuery, [opportunityId]);
-      
+
       if (opportunityResult.rows.length === 0) {
         return NextResponse.json({
           success: false,
@@ -56,10 +56,11 @@ export async function GET(request: NextRequest) {
       const limit = parseInt(searchParams.get('limit') || '10');
       const offset = (page - 1) * limit;
 
-      // Build the status condition based on ApplicationStatus enum
       let statusCondition = '';
+      let mappedApplicationStatus: string | null = null; // Declare a variable to hold the mapped status
+
       if (status !== 'ALL') {
-        const applicationStatus = 
+        mappedApplicationStatus =
           status === 'STRONG_FIT' ? 'SHORTLISTED' :
           status === 'GOOD_FIT' ? 'MAYBE' :
           status === 'REJECTED' ? 'REJECTED' :
@@ -73,12 +74,12 @@ export async function GET(request: NextRequest) {
         FROM "opportunityApplicants" oa
         WHERE oa."opportunityId" = $1 ${statusCondition}
       `;
-      
+
       const countParams = [opportunityId];
-      if (status !== 'ALL') {
-        countParams.push(status);
+      if (mappedApplicationStatus) { // Push the mapped status
+        countParams.push(mappedApplicationStatus);
       }
-      
+
       const countResult = await pool.query(countQuery, countParams);
       const totalCount = parseInt(countResult.rows[0].count);
 
@@ -102,7 +103,7 @@ export async function GET(request: NextRequest) {
 
       // If there are applicants, fetch them with all their documents
       const query = `
-        SELECT 
+        SELECT
           oa.id,
           oa."userId",
           oa."opportunityId",
@@ -128,12 +129,12 @@ export async function GET(request: NextRequest) {
       `;
 
       const queryParams = [opportunityId, limit, offset];
-      if (status !== 'ALL') {
-        queryParams.push(status);
+      if (mappedApplicationStatus) { // Push the mapped status
+        queryParams.push(mappedApplicationStatus);
       }
 
       const result = await pool.query(query, queryParams);
-      
+
       return NextResponse.json({
         success: true,
         message: 'Successfully retrieved applicants data',
@@ -146,7 +147,7 @@ export async function GET(request: NextRequest) {
             name: row.name,
             email: row.email,
             image: row.image,
-            status: row.applicationStatus,
+            status: row.applicationStatus, // Use row.applicationStatus directly here
             documents: {
               summary: {
                 cv: row.cv,
@@ -202,4 +203,4 @@ export async function GET(request: NextRequest) {
       }
     }, { status: 500 });
   }
-} 
+}

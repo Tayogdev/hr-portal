@@ -44,6 +44,8 @@
     "@storybook/nextjs": "^9.0.15",
     "@tailwindcss/postcss": "^4",
     "@types/jquery": "^3.5.32",
+    "@types/mdx": "^2.0.13",
+    "@types/mdx-js__react": "^1.5.8",
     "@types/node": "20.19.2",
     "@types/pg": "^8.15.4",
     "@types/react": "19.1.8",

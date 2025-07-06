@@ -39,10 +39,7 @@ export const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
   onAssignTask,
   initialTaskData, // Destructure the new prop
 }) => {
-  // If the modal is not open, don't render anything to optimize performance
-  if (!isOpen) return null;
-
-  // Form state management
+  // All HOOKS MUST BE DECLARED HERE, UNCONDITIONALLY, AT THE TOP LEVEL
   const [taskTitle, setTaskTitle] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [dueDate, setDueDate] = useState<string>('');
@@ -50,12 +47,50 @@ export const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
-  // State for "Created On" and "Updated On" timestamps
   const [createdOn, setCreatedOn] = useState<string>('');
   const [updatedOn, setUpdatedOn] = useState<string>('');
 
-  // State for showing the success message after task assignment
   const [showSuccessMessage, setShowSuccessMessage] = useState<boolean>(false);
+
+  // useEffect to handle modal opening and initial data loading
+  // This effect needs to be declared unconditionally, like all other hooks.
+  useEffect(() => {
+    if (isOpen) { // Only run logic if modal is actually open
+      setShowSuccessMessage(false); // Ensure success message is hidden on open
+
+      // Populate form fields if initialTaskData is provided
+      if (initialTaskData) {
+        setTaskTitle(initialTaskData.title || '');
+        setDescription(initialTaskData.description || '');
+        setDueDate(formatISODateToDatetimeLocal(initialTaskData.dueDate)); // Format for datetime-local input
+        setTags(initialTaskData.tags ? initialTaskData.tags.join(', ') : ''); // Join tags for display
+        setUploadedFileName(initialTaskData.uploadedFileName || null);
+
+        // Use initialTaskData's timestamps if available, otherwise set current time
+        setCreatedOn(initialTaskData.createdOn ? formatDateTime(new Date(initialTaskData.createdOn)) : formatDateTime(new Date()));
+        setUpdatedOn(initialTaskData.updatedOn ? formatDateTime(new Date(initialTaskData.updatedOn)) : formatDateTime(new Date()));
+      } else {
+        // If no initial data, reset fields and set current time for new task
+        setTaskTitle('');
+        setDescription('');
+        setDueDate('');
+        setTags('');
+        setUploadedFileName(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        const now = new Date();
+        const formattedNow = formatDateTime(now);
+        setCreatedOn(formattedNow);
+        setUpdatedOn(formattedNow);
+      }
+    }
+  }, [isOpen, initialTaskData]); // Depend on isOpen and initialTaskData
+
+
+  // If the modal is not open, don't render anything to optimize performance.
+  // This check comes AFTER all hook declarations.
+  if (!isOpen) return null;
 
   // Function to format date and time for display
   const formatDateTime = (date: Date): string => {
@@ -91,41 +126,6 @@ export const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
       return '';
     }
   };
-
-
-  // useEffect to handle modal opening and initial data loading
-  useEffect(() => {
-    if (isOpen) {
-      setShowSuccessMessage(false); // Ensure success message is hidden on open
-
-      // Populate form fields if initialTaskData is provided
-      if (initialTaskData) {
-        setTaskTitle(initialTaskData.title || '');
-        setDescription(initialTaskData.description || '');
-        setDueDate(formatISODateToDatetimeLocal(initialTaskData.dueDate)); // Format for datetime-local input
-        setTags(initialTaskData.tags ? initialTaskData.tags.join(', ') : ''); // Join tags for display
-        setUploadedFileName(initialTaskData.uploadedFileName || null);
-
-        // Use initialTaskData's timestamps if available, otherwise set current time
-        setCreatedOn(initialTaskData.createdOn ? formatDateTime(new Date(initialTaskData.createdOn)) : formatDateTime(new Date()));
-        setUpdatedOn(initialTaskData.updatedOn ? formatDateTime(new Date(initialTaskData.updatedOn)) : formatDateTime(new Date()));
-      } else {
-        // If no initial data, reset fields and set current time for new task
-        setTaskTitle('');
-        setDescription('');
-        setDueDate('');
-        setTags('');
-        setUploadedFileName(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-        const now = new Date();
-        const formattedNow = formatDateTime(now);
-        setCreatedOn(formattedNow);
-        setUpdatedOn(formattedNow);
-      }
-    }
-  }, [isOpen, initialTaskData]); // Depend on isOpen and initialTaskData
 
   // Handler for file upload
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>): void => {
@@ -182,7 +182,7 @@ export const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
         {/* Modal Content Container */}
         <div
           className="bg-white rounded-lg p-6 w-full max-w-sm sm:max-w-md md:max-w-xl lg:max-w-3xl xl:max-w-5xl
-                     max-h-[90vh] mx-auto relative flex flex-col shadow-lg overflow-hidden"
+                      max-h-[90vh] mx-auto relative flex flex-col shadow-lg overflow-hidden"
         >
           {/* Close Button - positioned absolutely and remains visible */}
           <button
@@ -214,7 +214,7 @@ export const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
               </svg>
               <h2 className="text-2xl font-semibold text-gray-900 mb-2 text-center">Task Assigned Successfully!</h2>
               <p className="text-gray-600 text-center">
-                The task "<span className="font-medium">{taskTitle}</span>" has been successfully assigned to{' '}
+                The task &quot;<span className="font-medium">{taskTitle}</span>&quot; has been successfully assigned to{' '}
                 <span className="font-medium">{selectedApplicantName || 'the applicant'}</span>.
                 <br />The modal will close shortly.
               </p>
@@ -310,7 +310,7 @@ export const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
                     <p className="text-sm font-medium text-gray-700">Created By</p>
                     <div className="flex items-center mt-1">
                       {/* It's good practice to provide `alt` text that describes the image content */}
-                      <Image src="/avatar-placeholder.png" alt="Vidushi Bhardwaj's avatar" width={32} height={32} className="rounded-full mr-2 object-cover" />
+                      <Image src="/avatar-placeholder.png" alt="Vidushi Bhardwaj&apos;s avatar" width={32} height={32} className="rounded-full mr-2 object-cover" />
                       <div>
                         <p className="text-sm font-medium text-gray-900">Vidushi Bhardwaj</p>
                         <p className="text-xs text-gray-500">Interaction Designer</p>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { useSession } from 'next-auth/react';
+// import { useSession } from 'next-auth/react'; // This line is removed
 
 type Document = {
   cv?: string;
@@ -36,7 +36,6 @@ type ApplicantListProps = {
 };
 
 export default function ApplicantList({ selected, opportunityId }: ApplicantListProps): React.JSX.Element {
-  const { data: session } = useSession();
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,13 +46,13 @@ export default function ApplicantList({ selected, opportunityId }: ApplicantList
       try {
         setLoading(true);
         setError(null);
-        
+
         const response = await fetch(`/api/opportunities/${opportunityId}/applicants`, {
           headers: {
             'Content-Type': 'application/json',
           },
         });
-        
+
         if (!response.ok) {
           const data = await response.json();
           throw new Error(data.message || `Error ${response.status}: Failed to fetch applicants`);
@@ -98,7 +97,7 @@ export default function ApplicantList({ selected, opportunityId }: ApplicantList
       <div className="py-4 px-2 flex items-center justify-center h-40 bg-gray-50 rounded-xl shadow-inner">
         <div className="flex flex-col items-center gap-2">
           <div className="text-red-500">{error}</div>
-          <button 
+          <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 text-sm text-white bg-blue-500 rounded-md hover:bg-blue-600"
           >
@@ -123,7 +122,7 @@ export default function ApplicantList({ selected, opportunityId }: ApplicantList
         const isSelected = selected === idx;
         const appliedDays = Math.floor((Date.now() - new Date(applicant.appliedDate).getTime()) / (1000 * 60 * 60 * 24));
         const showDefaultImage = imageError[applicant.id] || !applicant.image;
-        
+
         return (
           <div
             key={applicant.id}

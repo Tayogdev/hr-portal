@@ -182,3 +182,4 @@ export default function CustomNavbar(): React.JSX.Element {
     </>
   );
 }
+  

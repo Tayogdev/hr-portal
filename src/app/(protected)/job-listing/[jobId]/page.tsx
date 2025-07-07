@@ -1,95 +1,34 @@
-// app/page.tsx
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Share2, SlidersHorizontal } from "lucide-react";
-// import { useRouter } from "next/navigation"; // Removed useRouter as it's unused
-// import { useParams } from "next/navigation"; // Removed useParams as it's unused
+import { useParams } from "next/navigation";
 import { AssignTaskModal } from './AssignTaskModal';
 import { ScheduleInterviewModal } from './ScheduleInterviewModal';
 import { format } from "date-fns";
+import { ApplicantProfile, OpportunityDetails, ApplicantsApiResponse } from "@/types/applicants";
 
 type TabId = "all" | "shortlisted" | "final" | "rejected";
 type Section = "none" | "profile" | "resume" | "contact" | "files" | "taskDetails" | "interviewDetails";
 
-type Applicant = {
-  id: number;
-  name: string;
-  title: string;
-  score: number;
-  tags: string[];
-  appliedDate: string;
-};
-
-// Extend Applicant type to include assignedTask and scheduledInterview
-type ApplicantWithTask = Applicant & {
-  assignedTask?: {
-    id: string;
-    title: string;
-    description: string;
-    dueDate: string;
-  };
-  scheduledInterview?: {
-    date: string; // Or Date, depending on how you store/display it (formatted in modal)
-    time: string;
-    interviewer: string;
-    mode: string;
-    link?: string;
-    notes?: string;
-  };
-};
-
-const mockApplicants: ApplicantWithTask[] = [
-  {
-    id: 2,
-    name: "Ananya Sharma",
-    title: "Frontend Developer Intern, IIIT Bangalore",
-    score: 9,
-    tags: ["React.js", "Tailwind CSS", "Next.js", "UI/UX"],
-    appliedDate: "18 days ago",
-  },
-  {
-    id: 3,
-    name: "Rohit Jain",
-    title: "Software Developer Trainee, NIT Trichy",
-    score: 8,
-    tags: ["JavaScript", "Node.js", "MongoDB", "REST APIs"],
-    appliedDate: "12 days ago",
-  },
-  {
-    id: 4,
-    name: "Meera Iyer",
-    title: "Data Analyst, pursuing B.Tech in Data Science from VIT",
-    score: 9,
-    tags: ["Python", "Pandas", "SQL", "Power BI", "Statistics"],
-    appliedDate: "8 days ago",
-  },
-  {
-    id: 5,
-    name: "Amit Kumar",
-    title: "DevOps Intern at TCS, Final year student - B.E. CS",
-    score: 7,
-    tags: ["Docker", "Kubernetes", "CI/CD", "AWS"],
-    appliedDate: "4 days ago",
-  },
-];
-
 export default function JobDetailPage() {
-  // const _router = useRouter(); // Removed
-  // const _params = useParams(); // Removed
-  // const _jobId = _params?.jobId as string; // Removed
+  const params = useParams();
+  const jobId = params?.jobId as string;
+  
   const [markAsOpen, setMarkAsOpen] = useState(false);
-  const [applicants, setApplicants] = useState<ApplicantWithTask[]>(mockApplicants);
-  const [shortlistedApplicants, setShortlistedApplicants] = useState<Applicant[]>([]);
+  const [applicants, setApplicants] = useState<ApplicantProfile[]>([]);
+  const [shortlistedApplicants, setShortlistedApplicants] = useState<ApplicantProfile[]>([]);
+  const [opportunity, setOpportunity] = useState<OpportunityDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isAssignTaskModalOpen, setIsAssignTaskModalOpen] = useState(false);
   const [isScheduleInterviewModalOpen, setIsScheduleInterviewModalOpen] = useState(false);
 
-  const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<TabId>("all");
   const [selectedFilter, setSelectedFilter] = useState<string>("All");
-  const [selectedApplicant, setSelectedApplicant] = useState<ApplicantWithTask | null>(null);
+  const [selectedApplicant, setSelectedApplicant] = useState<ApplicantProfile | null>(null);
   const [jobStatus, setJobStatus] = useState<"Live" | "Closed">("Live");
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -97,7 +36,59 @@ export default function JobDetailPage() {
 
   const statusRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const plusMenuRef = useRef<HTMLDivElement>(null); // Ref for the plus menu
+
+  // Fetch applicants data
+  useEffect(() => {
+    const fetchApplicantsData = async () => {
+      if (!jobId) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch(`/api/opportunities/${jobId}/applicants?page=1&limit=50`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include', // Include session cookies
+        });
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('Authentication required. Please log in again.');
+          } else if (response.status === 403) {
+            throw new Error('Access denied. You do not have permission to view this content.');
+          } else if (response.status === 429) {
+            throw new Error('Too many requests. Please try again in a moment.');
+          } else {
+            throw new Error(`Failed to fetch applicants (${response.status})`);
+          }
+        }
+        
+        const data: ApplicantsApiResponse = await response.json();
+        
+        if (data.success) {
+          // Enhance applicant data with UI fields
+          const enhancedApplicants = data.data.applicants.map(enhanceApplicantData);
+          setApplicants(enhancedApplicants);
+          setOpportunity(data.data.opportunity);
+          
+          // Set shortlisted applicants based on status
+          const shortlisted = enhancedApplicants.filter(app => app.status === 'SHORTLISTED');
+          setShortlistedApplicants(shortlisted);
+        } else {
+          throw new Error(data.message || 'Failed to fetch applicants');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+        console.error('Error fetching applicants:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchApplicantsData();
+  }, [jobId]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -107,35 +98,88 @@ export default function JobDetailPage() {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setMenuOpen(false);
       }
-      if (plusMenuRef.current && !plusMenuRef.current.contains(event.target as Node)) {
-        setPlusMenuOpen(false);
-      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Utility function to enhance applicant data with missing fields for UI
+  const enhanceApplicantData = (applicant: ApplicantProfile): ApplicantProfile => {
+    return {
+      ...applicant,
+      title: applicant.title || `${applicant.name} - Applicant`,
+      tags: applicant.tags || ['JavaScript', 'React', 'Node.js'],
+      score: applicant.score || Math.floor(Math.random() * 10) + 1,
+      appliedDate: applicant.appliedDate ? 
+        `${Math.floor((new Date().getTime() - new Date(applicant.appliedDate).getTime()) / (1000 * 60 * 60 * 24))} days ago` : 
+        'Recently'
+    };
+  };
 
   const tabs: { id: TabId; label: string }[] = [
     { id: "all", label: `All Applicants (${applicants.length})` },
-    // Filter shortlisted applicants based on their 'id' to ensure type consistency
-    { id: "shortlisted", label: `Shortlisted (${applicants.filter(app => shortlistedApplicants.some(sa => sa.id === app.id)).length})` },
-    { id: "final", label: "Final Selections (0)" },
-    { id: "rejected", label: "Rejected (0)" },
+    { id: "shortlisted", label: `Shortlisted (${applicants.filter(app => app.status === 'SHORTLISTED').length})` },
+    { id: "final", label: `Final Selections (${applicants.filter(app => app.status === 'FINAL').length})` },
+    { id: "rejected", label: `Rejected (${applicants.filter(app => app.status === 'REJECTED').length})` },
   ];
 
   const filters = [
     { id: "all", label: "All", count: `(${applicants.length})` },
-    { id: "strong", label: "Strong Fit", count: "(8)" },
-    { id: "good", label: "Good Fit", count: "(16)" },
-    { id: "potential", label: "Potential", count: "(32)" },
-    { id: "consider", label: "Consider", count: "(16)" },
-    { id: "declined", label: "Declined", count: "(8)" },
+    { id: "strong", label: "Strong Fit", count: `(${applicants.filter(app => app.score && app.score >= 8).length})` },
+    { id: "good", label: "Good Fit", count: `(${applicants.filter(app => app.score && app.score >= 6 && app.score < 8).length})` },
+    { id: "potential", label: "Potential", count: `(${applicants.filter(app => app.score && app.score >= 4 && app.score < 6).length})` },
+    { id: "consider", label: "Consider", count: `(${applicants.filter(app => app.score && app.score >= 2 && app.score < 4).length})` },
+    { id: "declined", label: "Declined", count: `(${applicants.filter(app => app.status === 'REJECTED').length})` },
   ];
+
+  // Get filtered applicants based on selected tab
+  const getFilteredApplicants = () => {
+    let filtered = applicants;
+    
+    // Filter by tab
+    switch (selectedTab) {
+      case "shortlisted":
+        filtered = applicants.filter(app => app.status === 'SHORTLISTED');
+        break;
+      case "final":
+        filtered = applicants.filter(app => app.status === 'FINAL');
+        break;
+      case "rejected":
+        filtered = applicants.filter(app => app.status === 'REJECTED');
+        break;
+      default:
+        filtered = applicants;
+    }
+
+    // Apply additional filters if not on shortlisted tab
+    if (selectedTab !== "shortlisted" && selectedFilter !== "All") {
+      switch (selectedFilter) {
+        case "Strong Fit":
+          filtered = filtered.filter(app => app.score && app.score >= 8);
+          break;
+        case "Good Fit":
+          filtered = filtered.filter(app => app.score && app.score >= 6 && app.score < 8);
+          break;
+        case "Potential":
+          filtered = filtered.filter(app => app.score && app.score >= 4 && app.score < 6);
+          break;
+        case "Consider":
+          filtered = filtered.filter(app => app.score && app.score >= 2 && app.score < 4);
+          break;
+        case "Declined":
+          filtered = filtered.filter(app => app.status === 'REJECTED');
+          break;
+      }
+    }
+
+    return filtered;
+  };
+
+  const filteredApplicants = getFilteredApplicants();
 
   const handleAssignTask = (taskDetails: { title: string; description: string; dueDate: string }) => {
     if (selectedApplicant) {
-      const updatedApplicant: ApplicantWithTask = {
+      const updatedApplicant: ApplicantProfile = {
         ...selectedApplicant,
         assignedTask: {
           id: `task-${Date.now()}`,
@@ -162,7 +206,7 @@ export default function JobDetailPage() {
     linkAddress: string;
   }) => {
     if (selectedApplicant) {
-      const updatedApplicant: ApplicantWithTask = {
+      const updatedApplicant: ApplicantProfile = {
         ...selectedApplicant,
         scheduledInterview: {
           date: interviewDetails.selectedDate ? format(interviewDetails.selectedDate, 'PPP') : 'N/A',
@@ -184,6 +228,30 @@ export default function JobDetailPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-gray-500">Loading applicants...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 md:p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="text-red-700">Error: {error}</div>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-2 text-red-600 underline"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-6">
       {/* Header */}
@@ -194,10 +262,16 @@ export default function JobDetailPage() {
           </div>
           <div>
             <h1 className="text-lg md:text-xl font-semibold text-gray-900">
-              User Experience and Research Intern
+              {opportunity?.role || opportunity?.title || 'Job Opportunity'}
             </h1>
-            <p className="text-sm text-gray-500">Tech Japan • Remote • Needs 0/1</p>
-            <p className="text-sm text-gray-500">Posted on 08.07.2024 • Closing on 19.08.2024</p>
+            <p className="text-sm text-gray-500">
+              {opportunity?.institute || 'Company'} • {opportunity?.location || 'Remote'} • 
+              Needs {opportunity?.vacancies || 0}/{opportunity?.maxParticipants || 0}
+            </p>
+            <p className="text-sm text-gray-500">
+              Posted on {opportunity?.regStartDate ? new Date(opportunity.regStartDate).toLocaleDateString('en-GB') : 'N/A'} • 
+              Closing on {opportunity?.regEndDate ? new Date(opportunity.regEndDate).toLocaleDateString('en-GB') : 'N/A'}
+            </p>
           </div>
         </div>
 
@@ -277,8 +351,6 @@ export default function JobDetailPage() {
               key={tab.id}
               onClick={() => {
                 setSelectedTab(tab.id);
-                // When tab changes, clear selected applicant to avoid stale data
-                // Or you could re-select the first applicant of the new tab's list if available
                 setSelectedApplicant(null);
                 setActiveSection("none");
               }}
@@ -333,48 +405,66 @@ export default function JobDetailPage() {
         {/* Left Column */}
         <div className="bg-white rounded-lg p-4 shadow-sm">
           <h2 className="text-lg font-semibold mb-4">Applicants</h2>
-          {/* Render applicants based on selected tab */}
-          {/* Ensure we map over `applicants` and filter based on `shortlistedApplicants` for correct type */}
-          {(selectedTab === "all" ? applicants : applicants.filter(app => shortlistedApplicants.some(sa => sa.id === app.id))).map((applicant) => {
+          {filteredApplicants.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>No applicants found for this filter.</p>
+            </div>
+          ) : (
+            filteredApplicants.map((applicant) => {
             const isSelected = selectedApplicant?.id === applicant.id;
             return (
               <div
                 key={applicant.id}
                 onClick={() => {
                   setSelectedApplicant(applicant);
-                  setActiveSection("none"); // Reset active section when selecting new applicant
-                }}
-                className={`flex gap-4 cursor-pointer p-4 border-l-4 ${
-                  isSelected ? "border-[#4F46E5] bg-gray-50" : "border-transparent"
-                } hover:bg-gray-50`}
-              >
-                <div className="w-12 h-12 rounded-full overflow-hidden">
-                  <Image
-                    src="/avatar-placeholder.png"
-                    alt={applicant.name}
-                    width={48}
-                    height={48}
-                    className="object-cover w-full h-full"
-                  />
+                    setActiveSection("none");
+                  }}
+                  className={`flex gap-4 cursor-pointer p-4 border-l-4 rounded-r-lg mb-3 transition-all ${
+                    isSelected 
+                      ? "border-blue-500 bg-blue-50 shadow-sm" 
+                      : "border-transparent hover:bg-gray-50 hover:border-gray-200"
+                  }`}
+                >
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                    <span className="text-sm font-semibold text-gray-600">
+                      {applicant.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                    </span>
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-gray-900 text-sm">{applicant.name}</h3>
-                  <p className="text-sm text-gray-600">{applicant.title}</p>
-                  <div className="text-sm text-[#6366F1] mt-1 flex flex-wrap gap-x-1">
-                    {applicant.tags.map((tag, idx) => (
-                      <span key={idx} className="text-blue-600">
+                    <p className="text-sm text-gray-600 mb-1">{applicant.title}</p>
+                    <div className="text-sm text-blue-600 mt-1 flex flex-wrap gap-x-2">
+                      {applicant.tags?.slice(0, 3).map((tag, idx) => (
+                        <span key={idx} className="bg-blue-100 px-2 py-0.5 rounded text-xs">
                         {tag}
                       </span>
                     ))}
                   </div>
                   <div className="mt-2 flex justify-between text-sm text-gray-500">
                     <span>Applied {applicant.appliedDate}</span>
-                    <span className="text-green-600 font-semibold">Score: {applicant.score}</span>
-                  </div>
+                      <span className={`font-semibold ${
+                        applicant.score && applicant.score >= 8 ? 'text-green-600' :
+                        applicant.score && applicant.score >= 6 ? 'text-yellow-600' :
+                        'text-gray-600'
+                      }`}>
+                        Score: {applicant.score}
+                      </span>
+                    </div>
+                    <div className="mt-1">
+                      <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                        applicant.status === 'SHORTLISTED' ? 'bg-blue-100 text-blue-800' :
+                        applicant.status === 'FINAL' ? 'bg-green-100 text-green-800' :
+                        applicant.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {applicant.status}
+                      </span>
+                    </div>
                 </div>
               </div>
             );
-          })}
+            })
+          )}
         </div>
 
         {/* Right Column */}
@@ -392,7 +482,7 @@ export default function JobDetailPage() {
               </div>
 
               <div className="flex flex-wrap gap-2 text-sm text-indigo-600 font-medium mt-4">
-                {selectedApplicant.tags.map((tag, idx) => (
+                {selectedApplicant.tags?.map((tag, idx) => (
                   <span key={idx}>{tag}</span>
                 ))}
               </div>
@@ -405,10 +495,7 @@ export default function JobDetailPage() {
                     { label: "Resume/ CV", key: "resume" },
                     { label: "Contacts", key: "contact" },
                     { label: "2 files ▼", key: "files" },
-                    // Add a button to view interview details if scheduled
-                  ]
-                  .filter((item): item is { label: string; key: Section } => item !== null)
-                  .map(({ label, key }) => (
+                  ].map(({ label, key }) => (
                     <button
                       key={key}
                       onClick={() => setActiveSection(activeSection === key ? "none" : (key as Section))}
@@ -462,14 +549,10 @@ export default function JobDetailPage() {
                       className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700"
                       onClick={() => {
                         if (selectedApplicant) {
-                          // Prevent adding duplicates to shortlistedApplicants
                           if (!shortlistedApplicants.some(app => app.id === selectedApplicant.id)) {
                                setShortlistedApplicants((prev) => [...prev, selectedApplicant]);
                            }
                            setSelectedTab("shortlisted");
-                          // You might want to automatically select this applicant again in the new tab
-                          // or let the default behavior (first applicant of the new tab) occur.
-                          // For now, it will likely select the first applicant in the 'shortlisted' array.
                         }
                       }}
                     >
@@ -484,7 +567,6 @@ export default function JobDetailPage() {
                       <button className="rounded-full px-4 py-1.5 text-sm font-medium border border-blue-600 text-blue-600 hover:bg-blue-50">
                         Shortlist <span className="ml-1">▼</span>
                       </button>
-                      {/* Dropdown for Shortlist (if needed in future) */}
                     </div>
                     <button className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700">
                       Finalize
@@ -493,9 +575,7 @@ export default function JobDetailPage() {
                 )}
               </div>
 
-              {/* Dynamic Assign/View Task Button and Schedule Interview Button */}
-
-
+              {/* Task and Interview buttons for shortlisted */}
 {selectedTab === "shortlisted" && selectedApplicant && (
   <div className="flex justify-end gap-2 mt-8">
     {selectedApplicant.assignedTask ? (
@@ -529,53 +609,14 @@ export default function JobDetailPage() {
         Schedule Interview <span className="ml-1 text-base">🗓️</span>
       </button>
     )}
-
-    {/* Conditionally render the '+' button and its dropdown */}
-    {(selectedApplicant.assignedTask || selectedApplicant.scheduledInterview) && (
-      <div className="relative" ref={plusMenuRef}>
-        <button
-          className="rounded-full w-10 h-10 border border-gray-300 text-gray-700 hover:bg-gray-100 flex items-center justify-center text-xl"
-          onClick={() => setPlusMenuOpen(!plusMenuOpen)}
-        >
-          +
-        </button>
-
-        {plusMenuOpen && (
-          <div className="absolute right-0 mt-2 w-60 bg-white border rounded shadow z-20">
-            {selectedApplicant?.assignedTask && (
-              <button
-                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
-                onClick={() => {
-                  setIsAssignTaskModalOpen(true);
-                  setPlusMenuOpen(false);
-                }}
-              >
-                ✏️ Edit Assigned Task
-              </button>
-            )}
-
-            {selectedApplicant?.scheduledInterview && (
-              <button
-                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
-                onClick={() => {
-                  setIsScheduleInterviewModalOpen(true);
-                  setPlusMenuOpen(false);
-                }}
-              >
-                📅 Edit Scheduled Interview
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    )}
   </div>
 )}
 
+              {/* Content sections */}
               {activeSection === "profile" && (
                 <div className="mt-6">
                   <h4 className="text-md font-semibold mb-2">Profile Summary</h4>
-                  <p className="text-gray-700 text-sm">Hi Raj, how are you?</p>
+                  <p className="text-gray-700 text-sm">Applicant profile information</p>
                 </div>
               )}
 
@@ -611,8 +652,8 @@ export default function JobDetailPage() {
               {activeSection === "contact" && (
                 <div id="contact-info" className="mt-10">
                   <h4 className="text-md font-semibold mb-2">Contact Info</h4>
-                  <p>Email: example@example.com</p>
-                  <p>Phone: +91 1234567890</p>
+                  <p>Email: {selectedApplicant.email}</p>
+                  <p>User ID: {selectedApplicant.userId}</p>
                 </div>
               )}
 
@@ -648,7 +689,10 @@ export default function JobDetailPage() {
                   </p>
                   {selectedApplicant.scheduledInterview.link && (
                     <p className="text-gray-800 mt-1">
-                      <span className="font-medium">Link:</span> <a href={selectedApplicant.scheduledInterview.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{selectedApplicant.scheduledInterview.link}</a>
+                      <span className="font-medium">Link:</span> 
+                      <a href={selectedApplicant.scheduledInterview.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-1">
+                        {selectedApplicant.scheduledInterview.link}
+                      </a>
                     </p>
                   )}
                   {selectedApplicant.scheduledInterview.notes && (

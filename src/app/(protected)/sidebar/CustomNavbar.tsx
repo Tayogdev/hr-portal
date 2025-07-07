@@ -14,6 +14,8 @@ import {
   Menu,
   X,
   Settings,
+  HelpCircle,
+  LogOut,
 } from 'lucide-react';
 
 type NavItem = {
@@ -56,125 +58,114 @@ export default function CustomNavbar(): React.JSX.Element {
 
   return (
     <>
-      {/* Mobile Toggle Button */}
-      <div className="md:hidden p-4">
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="text-gray-600 focus:outline-none"
-        >
-          {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </div>
-
-      {/* Sidebar */}
-      <aside
-        className={`bg-white z-50 border-r border-gray-200 w-64 fixed md:static top-0 left-0 h-screen transform ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col`}
+      {/* Mobile Toggle Button - Fixed position */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg border border-gray-200"
       >
-        {/* Logo */}
-        <div className="flex items-center justify-between md:justify-center px-4 py-3">
+        {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+      </button>
+
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Fixed Sidebar */}
+      <aside
+        className={`
+          fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-50
+          transform transition-transform duration-300 ease-in-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          md:translate-x-0
+          flex flex-col
+        `}
+      >
+        {/* Logo Section - Fixed */}
+        <div className="flex items-center justify-center px-4 py-6 border-b border-gray-100">
           <Image
             src="https://www.tayog.in/assets/logo/full_blue.svg"
             alt="tayog logo"
-            width={110}
-            height={28}
-            className="md:w-[124px] md:h-[32px] w-[110px] h-[28px]"
+            width={124}
+            height={32}
+            className="h-8 w-auto"
+            onError={(e) => {
+              // Fallback to text if logo fails to load
+              e.currentTarget.style.display = 'none';
+              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+            }}
           />
-          <div className="md:hidden">
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="text-gray-600"
-            >
-              <X size={20} />
-            </button>
-          </div>
+          <span className="hidden text-2xl font-bold text-blue-600">tayog</span>
         </div>
 
-        {/* Scrollable Navigation */}
-        <div className="flex-1 overflow-y-auto">
-          <nav className="flex flex-col gap-1 px-2 py-4">
+        {/* Navigation - Scrollable */}
+        <nav className="flex-1 overflow-y-auto py-4">
+          <div className="space-y-1 px-3">
             {navItems.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-[#F1F6FF] text-[#4F8FF0]'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`
+                    flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg
+                    transition-all duration-200 group
+                    ${
+                      isActive
+                        ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                    }
+                  `}
                 >
-                  {item.icon}
+                  <span className={`${isActive ? 'text-blue-700' : 'text-gray-500 group-hover:text-gray-700'}`}>
+                    {item.icon}
+                  </span>
                   {item.name}
                 </Link>
               );
             })}
-          </nav>
-        </div>
+          </div>
+        </nav>
 
-        {/* Bottom Fixed Section */}
-        <div className="px-4 py-4 space-y-3 border-t border-gray-200 bg-white">
-          {/* Logout */}
-          <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded"
-          >
-            <svg width="18" height="18" fill="none" viewBox="0 0 18 18">
-              <path
-                d="M15 9l-4-4v3H4v2h7v3l4-4z"
-                stroke="#666"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            Logout
-          </button>
-
+        {/* Bottom Section - Fixed */}
+        <div className="border-t border-gray-100 p-4 space-y-2">
           {/* Settings */}
-          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded">
+          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors">
             <Settings className="w-4 h-4" />
             Settings
           </button>
 
           {/* Help Desk */}
-          <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded">
-            <svg width="18" height="18" fill="none" viewBox="0 0 18 18">
-              <rect
-                x="3"
-                y="3"
-                width="12"
-                height="12"
-                rx="2"
-                stroke="#666"
-                strokeWidth="1.5"
-              />
-              <path
-                d="M6 9h6"
-                stroke="#666"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-            Help Desk
+          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors">
+            <HelpCircle className="w-4 h-4" />
+            Help desk
           </button>
 
-          {/* User Info */}
-          <div className="flex items-center gap-2 p-2 rounded bg-[#F1F6FF]">
-            <Image
-              src="https://randomuser.me/api/portraits/women/44.jpg"
-              alt="User"
-              width={32}
-              height={32}
-              className="rounded-full"
-            />
-            <div>
-              <div className="text-sm font-semibold text-gray-800">
+          {/* Logout */}
+          <button
+            onClick={() => signOut({ callbackUrl: '/login' })}
+            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
+          </button>
+
+          {/* User Profile */}
+          <div className="flex items-center gap-3 p-3 mt-4 bg-gray-50 rounded-lg">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-sm font-semibold text-blue-700">RD</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-gray-900 truncate">
                 Ravindra Dhage
               </div>
-              <div className="text-xs text-gray-500">Interaction Designer</div>
+              <div className="text-xs text-gray-500 truncate">
+                Interaction Designer
+              </div>
             </div>
           </div>
         </div>

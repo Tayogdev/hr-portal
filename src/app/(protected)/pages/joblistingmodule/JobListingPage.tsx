@@ -32,6 +32,7 @@ export default function JobListingPage(): React.JSX.Element {
   const { data: session } = useSession();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [jobStatuses, setJobStatuses] = useState<{ [key: string]: 'Live' | 'Closed' }>({});
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>(() => {
@@ -70,19 +71,77 @@ export default function JobListingPage(): React.JSX.Element {
   }, []);
 
   useEffect(() => {
-    fetchJobs(currentPage);
-  }, [currentPage]);
+    // Only fetch jobs if session is available
+    if (session) {
+      fetchJobs(currentPage);
+    }
+  }, [currentPage, session]);
 
   const fetchJobs = async (page: number) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/opportunities?page=${page}&limit=10`);
-      if (!response.ok) throw new Error('Failed to fetch jobs');
-      const data = await response.json();
-      setJobs(data.opportunities);
-      setPagination(data.pagination);
+      setError(null);
+      
+      // Make sure session is available before making API calls
+      if (!session) {
+        throw new Error('Please log in to view job listings');
+      }
+      
+      const response = await fetch(`/api/opportunities?page=${page}&limit=10`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Include session cookies
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication required. Please log in again.');
+        } else if (response.status === 403) {
+          throw new Error('Access denied. You do not have permission to view this content.');
+        } else if (response.status === 429) {
+          throw new Error('Too many requests. Please try again in a moment.');
+        } else {
+          throw new Error(`Failed to fetch jobs (${response.status})`);
+        }
+      }
+      
+      const result = await response.json();
+      
+      // Handle the new structured API response
+      if (result.success && result.data) {
+        setJobs(result.data.opportunities || []);
+        setPagination(result.data.pagination || {
+          total: 0,
+          page: 1,
+          totalPages: 1,
+          hasMore: false
+        });
+      } else {
+        // Handle error response
+        const errorMessage = result.message || 'Unknown error occurred';
+        console.error('API Error:', errorMessage);
+        setError(errorMessage);
+        setJobs([]);
+        setPagination({
+          total: 0,
+          page: 1,
+          totalPages: 1,
+          hasMore: false
+        });
+      }
     } catch (error) {
       console.error('Error fetching jobs:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load jobs';
+      setError(errorMessage);
+      setJobs([]);
+      setPagination({
+        total: 0,
+        page: 1,
+        totalPages: 1,
+        hasMore: false
+      });
     } finally {
       setLoading(false);
     }
@@ -101,6 +160,40 @@ export default function JobListingPage(): React.JSX.Element {
     return (
       <div className="p-8 bg-[#F8F9FC] min-h-screen flex items-center justify-center">
         <div className="text-gray-500">Loading jobs...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 bg-[#F8F9FC] min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">⚠️ Error Loading Jobs</div>
+          <div className="text-gray-600 mb-4">{error}</div>
+          <Button 
+            onClick={() => fetchJobs(currentPage)}
+            className="bg-[#4F46E5] hover:bg-[#4338CA] text-white"
+          >
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (jobs.length === 0 && !loading) {
+    return (
+      <div className="p-8 bg-[#F8F9FC] min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-gray-500 mb-4">📋 No Jobs Found</div>
+          <div className="text-gray-400 mb-4">You haven&apos;t posted any job opportunities yet.</div>
+          <Button 
+            onClick={() => fetchJobs(currentPage)}
+            className="bg-[#4F46E5] hover:bg-[#4338CA] text-white"
+          >
+            Refresh
+          </Button>
+        </div>
       </div>
     );
   }

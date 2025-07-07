@@ -9,15 +9,17 @@ export default function ProtectedGroupLayout({
 }) {
   return (
     <ProtectedLayout>
-      <div className="flex flex-col md:flex-row min-h-screen">
-        {/* Sidebar - This is the fixed sidebar */}
+      <div className="flex h-screen overflow-hidden bg-gray-50">
+        {/* Fixed Sidebar */}
         <CustomNavbar />
 
-        {/* Main content area - This div needs to shift right for the fixed sidebar */}
-        <div className="flex-1 flex flex-col overflow-hidden **md:ml-64**"> {/* <-- Key change here */}
-          {/* Header - This will stick to the top of this content area */}
+        {/* Main content area with proper margin for fixed sidebar */}
+        <div className="flex-1 flex flex-col ml-0 md:ml-64 overflow-hidden">
+          {/* Fixed Header */}
           <Header />
-          <main className="flex-1 overflow-y-auto p-4 bg-[#F8FAFC]">
+          
+          {/* Scrollable main content */}
+          <main className="flex-1 overflow-y-auto bg-[#F8FAFC] p-4 md:p-6">
             {children}
           </main>
         </div>

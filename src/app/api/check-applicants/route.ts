@@ -9,13 +9,13 @@
 
 import { NextResponse } from 'next/server';
 import pool from '@/dbconfig/dbconfig';
-import { validateAPIRoute } from '@/lib/utils';
+import { validateAPIRouteWithRateLimit } from '@/lib/utils';
 import { type NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    // Validate authentication
-    const authError = await validateAPIRoute(request);
+    // Validate authentication with rate limiting
+    const authError = await validateAPIRouteWithRateLimit(request);
     if (authError) return authError;
 
     // Check if table exists first
@@ -32,7 +32,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: false,
         message: 'Table opportunityApplicants does not exist',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        error: {
+          code: 'TABLE_NOT_FOUND',
+          details: 'The required database table does not exist'
+        }
       }, { status: 404 });
     }
 
@@ -106,7 +110,7 @@ export async function GET(request: NextRequest) {
       pool.query(statusCountQuery)
     ]);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: 'API executed successfully! OpportunityApplicants table data retrieved.',
       timestamp: new Date().toISOString(),
@@ -124,6 +128,13 @@ export async function GET(request: NextRequest) {
       }
     }, { status: 200 });
 
+    // Add security headers
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    response.headers.set('X-Frame-Options', 'DENY');
+    response.headers.set('X-XSS-Protection', '1; mode=block');
+    
+    return response;
+
   } catch (error) {
     console.error('Error checking opportunityApplicants table:', error);
     return NextResponse.json({
@@ -131,6 +142,7 @@ export async function GET(request: NextRequest) {
       message: 'API execution failed',
       timestamp: new Date().toISOString(),
       error: {
+        code: 'INTERNAL_ERROR',
         message: error instanceof Error ? error.message : 'An unknown error occurred',
         details: error instanceof Error ? error.stack : String(error)
       }

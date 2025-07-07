@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     if (authError) return authError;
 
     // ✅ Use static user ID - in production, get this from the authenticated token
-    const userId = '1bcd2b99-da2b-4cf2-82a6-b4585b9a2dd4';
+    const userId = '7a902358-4091-40a8-8f15-10f7e423aca9';
 
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1', 10);

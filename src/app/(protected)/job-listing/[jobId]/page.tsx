@@ -177,27 +177,61 @@ export default function JobDetailPage() {
 
   const filteredApplicants = getFilteredApplicants();
 
-  const handleAssignTask = (taskDetails: { title: string; description: string; dueDate: string }) => {
-    if (selectedApplicant) {
-      const updatedApplicant: ApplicantProfile = {
-        ...selectedApplicant,
-        assignedTask: {
-          id: `task-${Date.now()}`,
-          ...taskDetails,
+  const handleAssignTask = async (taskDetails: { title: string; description: string; dueDate: string; tags: string[]; uploadedFileName: string | null }) => {
+    if (!selectedApplicant) return;
+
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      };
+        credentials: 'include',
+        body: JSON.stringify({
+          opportunityId: jobId,
+          applicantId: selectedApplicant.id,
+          title: taskDetails.title,
+          description: taskDetails.description,
+          dueDate: taskDetails.dueDate,
+          tags: taskDetails.tags,
+          uploadedFileName: taskDetails.uploadedFileName
+        }),
+      });
 
-      setApplicants(prevApplicants =>
-        prevApplicants.map(app => (app.id === updatedApplicant.id ? updatedApplicant : app))
-      );
+      const result = await response.json();
 
-      setSelectedApplicant(updatedApplicant);
-      setIsAssignTaskModalOpen(false);
-      setActiveSection("taskDetails");
+      if (result.success) {
+        // Update the applicant with the new task
+        const updatedApplicant: ApplicantProfile = {
+          ...selectedApplicant,
+          assignedTask: {
+            id: result.data.task.id,
+            title: result.data.task.title,
+            description: result.data.task.description,
+            dueDate: result.data.task.dueDate,
+          },
+        };
+
+        setApplicants(prevApplicants =>
+          prevApplicants.map(app => (app.id === updatedApplicant.id ? updatedApplicant : app))
+        );
+
+        setSelectedApplicant(updatedApplicant);
+        setIsAssignTaskModalOpen(false);
+        setActiveSection("taskDetails");
+        
+        // Show success message
+        alert('Task assigned successfully!');
+      } else {
+        throw new Error(result.message || 'Failed to assign task');
+      }
+    } catch (error) {
+      console.error('Error assigning task:', error);
+      alert('Failed to assign task. Please try again.');
     }
   };
 
-  const handleScheduleInterview = (interviewDetails: {
+  const handleScheduleInterview = async (interviewDetails: {
     selectedDate: Date | undefined;
     selectedTime: string;
     notesForCandidate: string;
@@ -205,26 +239,67 @@ export default function JobDetailPage() {
     modeOfInterview: string;
     linkAddress: string;
   }) => {
-    if (selectedApplicant) {
-      const updatedApplicant: ApplicantProfile = {
-        ...selectedApplicant,
-        scheduledInterview: {
-          date: interviewDetails.selectedDate ? format(interviewDetails.selectedDate, 'PPP') : 'N/A',
-          time: interviewDetails.selectedTime,
-          interviewer: interviewDetails.assignInterviewer,
-          mode: interviewDetails.modeOfInterview,
-          link: interviewDetails.linkAddress,
-          notes: interviewDetails.notesForCandidate,
+    if (!selectedApplicant) return;
+
+    try {
+      // Convert Date to ISO string for API
+      const scheduledDate = interviewDetails.selectedDate ? interviewDetails.selectedDate.toISOString() : null;
+      
+      if (!scheduledDate) {
+        alert('Please select a valid date for the interview.');
+        return;
+      }
+
+      const response = await fetch('/api/interviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      };
+        credentials: 'include',
+        body: JSON.stringify({
+          opportunityId: jobId,
+          applicantId: selectedApplicant.id,
+          interviewerName: interviewDetails.assignInterviewer,
+          scheduledDate: scheduledDate,
+          scheduledTime: interviewDetails.selectedTime,
+          modeOfInterview: interviewDetails.modeOfInterview,
+          linkAddress: interviewDetails.linkAddress,
+          notesForCandidate: interviewDetails.notesForCandidate
+        }),
+      });
 
-      setApplicants(prevApplicants =>
-        prevApplicants.map(app => (app.id === updatedApplicant.id ? updatedApplicant : app))
-      );
+      const result = await response.json();
 
-      setSelectedApplicant(updatedApplicant);
-      setIsScheduleInterviewModalOpen(false);
-      setActiveSection("interviewDetails");
+      if (result.success) {
+        // Update the applicant with the new interview
+        const updatedApplicant: ApplicantProfile = {
+          ...selectedApplicant,
+          scheduledInterview: {
+            date: interviewDetails.selectedDate ? format(interviewDetails.selectedDate, 'PPP') : 'N/A',
+            time: interviewDetails.selectedTime,
+            interviewer: interviewDetails.assignInterviewer,
+            mode: interviewDetails.modeOfInterview,
+            link: interviewDetails.linkAddress,
+            notes: interviewDetails.notesForCandidate,
+          },
+        };
+
+        setApplicants(prevApplicants =>
+          prevApplicants.map(app => (app.id === updatedApplicant.id ? updatedApplicant : app))
+        );
+
+        setSelectedApplicant(updatedApplicant);
+        setIsScheduleInterviewModalOpen(false);
+        setActiveSection("interviewDetails");
+        
+        // Show success message
+        alert('Interview scheduled successfully!');
+      } else {
+        throw new Error(result.message || 'Failed to schedule interview');
+      }
+    } catch (error) {
+      console.error('Error scheduling interview:', error);
+      alert('Failed to schedule interview. Please try again.');
     }
   };
 

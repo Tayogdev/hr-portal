@@ -13,7 +13,8 @@
 
 import { NextResponse } from 'next/server';
 import pool from '@/dbconfig/dbconfig';
-import { validateAPIRoute } from '@/lib/utils';
+
+import { validateAPIRouteWithRateLimit } from '@/lib/utils';
 import { type NextRequest } from 'next/server';
 import { DatabaseError } from 'pg';
 
@@ -22,12 +23,28 @@ export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
   try {
-    // Validate authentication
-    const authError = await validateAPIRoute(request);
+
+    // Validate authentication with rate limiting
+    const authError = await validateAPIRouteWithRateLimit(request);
     if (authError) return authError;
 
     const url = new URL(request.url);
     const opportunityId = url.pathname.split('/')[3];
+
+
+    // Validate opportunityId format (UUID)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(opportunityId)) {
+      return NextResponse.json({
+        success: false,
+        message: 'Invalid opportunity ID format',
+        timestamp: new Date().toISOString(),
+        error: {
+          code: 'INVALID_ID',
+          details: 'Opportunity ID must be a valid UUID'
+        }
+      }, { status: 400 });
+    }
 
     try {
       await pool.query('SELECT NOW()');
@@ -46,7 +63,10 @@ export async function GET(request: NextRequest) {
           success: false,
           message: 'Opportunity not found',
           timestamp: new Date().toISOString(),
-          data: null
+          error: {
+            code: 'NOT_FOUND',
+            details: 'No opportunity found with the provided ID'
+          }
         }, { status: 404 });
       }
 
@@ -55,6 +75,34 @@ export async function GET(request: NextRequest) {
       const page = parseInt(searchParams.get('page') || '1');
       const limit = parseInt(searchParams.get('limit') || '10');
       const offset = (page - 1) * limit;
+
+
+      // Validate pagination parameters
+      if (page < 1 || limit < 1 || limit > 100) {
+        return NextResponse.json({
+          success: false,
+          message: 'Invalid pagination parameters',
+          timestamp: new Date().toISOString(),
+          error: {
+            code: 'INVALID_PARAMS',
+            details: 'Page must be >= 1, limit must be between 1 and 100'
+          }
+        }, { status: 400 });
+      }
+
+      // Validate status parameter
+      const validStatuses = ['ALL', 'STRONG_FIT', 'GOOD_FIT', 'REJECTED', 'FINAL'];
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json({
+          success: false,
+          message: 'Invalid status parameter',
+          timestamp: new Date().toISOString(),
+          error: {
+            code: 'INVALID_STATUS',
+            details: `Status must be one of: ${validStatuses.join(', ')}`
+          }
+        }, { status: 400 });
+      }
 
       let statusCondition = '';
       let mappedApplicationStatus: string | null = null; // Declare a variable to hold the mapped status
@@ -84,7 +132,8 @@ export async function GET(request: NextRequest) {
       const totalCount = parseInt(countResult.rows[0].count);
 
       if (totalCount === 0) {
-        return NextResponse.json({
+
+        const response = NextResponse.json({
           success: true,
           message: 'No applicants found for this opportunity',
           timestamp: new Date().toISOString(),
@@ -99,6 +148,14 @@ export async function GET(request: NextRequest) {
             }
           }
         });
+
+
+        // Add security headers
+        response.headers.set('X-Content-Type-Options', 'nosniff');
+        response.headers.set('X-Frame-Options', 'DENY');
+        response.headers.set('X-XSS-Protection', '1; mode=block');
+        
+        return response;
       }
 
       // If there are applicants, fetch them with all their documents
@@ -135,7 +192,8 @@ export async function GET(request: NextRequest) {
 
       const result = await pool.query(query, queryParams);
 
-      return NextResponse.json({
+
+      const response = NextResponse.json({
         success: true,
         message: 'Successfully retrieved applicants data',
         timestamp: new Date().toISOString(),
@@ -168,6 +226,13 @@ export async function GET(request: NextRequest) {
           }
         }
       });
+
+      // Add security headers
+      response.headers.set('X-Content-Type-Options', 'nosniff');
+      response.headers.set('X-Frame-Options', 'DENY');
+      response.headers.set('X-XSS-Protection', '1; mode=block');
+      
+      return response;
     } catch (error) {
       if (error instanceof DatabaseError) {
         return NextResponse.json({
@@ -175,7 +240,8 @@ export async function GET(request: NextRequest) {
           message: 'Database error occurred',
           timestamp: new Date().toISOString(),
           error: {
-            code: error.code,
+
+            code: 'DATABASE_ERROR',
             message: error.message,
             detail: error.detail,
             table: error.table
@@ -188,6 +254,8 @@ export async function GET(request: NextRequest) {
         message: 'An unexpected error occurred',
         timestamp: new Date().toISOString(),
         error: {
+
+          code: 'INTERNAL_ERROR',
           message: error instanceof Error ? error.message : String(error)
         }
       }, { status: 500 });
@@ -198,6 +266,7 @@ export async function GET(request: NextRequest) {
       message: 'Failed to fetch applicants',
       timestamp: new Date().toISOString(),
       error: {
+        code: 'INTERNAL_ERROR',
         details: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined
       }

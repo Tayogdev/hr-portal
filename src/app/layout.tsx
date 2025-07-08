@@ -3,6 +3,8 @@ import './globals.css';
 import type { Metadata } from 'next';
 import SessionWrapper from '@/components/SessionWrapper';
 
+import ErrorBoundary from '@/components/ErrorBoundary';
+
 export const metadata: Metadata = {
   title: 'tayog',
   description: 'Job Portal',
@@ -16,11 +18,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-white text-gray-900 antialiased">
-        <SessionWrapper>
-          {children}
-        </SessionWrapper>
+        
+        <ErrorBoundary>
+          <SessionWrapper>
+            {children}
+          </SessionWrapper>
+        </ErrorBoundary>
       </body>
     </html>
   );
 }
-

@@ -5,79 +5,43 @@ import Image from 'next/image';
 import ReviewFilterButton from './ReviewFilterButton';
 import AdvancedFilterModal from './AdvancedFilterModal';
 import { useRouter } from 'next/navigation';
+
 interface Applicant {
+  id: string;
+  userId: string;
   name: string;
+  email: string;
   role: string;
   jobType: string;
   uploads: number;
   appliedOn: string;
-  status: string;
+  status: 'PENDING' | 'SHORTLISTED' | 'MAYBE' | 'REJECTED' | 'FINAL';
   score: number;
-  scoreColor: string; 
+  scoreColor: string;
+  opportunityId: string;
+  opportunityTitle: string;
 }
 
-const initialApplicants: Applicant[] = [
-  {
-    name: 'Gatikrushna Mohapatra',
-    role: 'User Experience and Research Intern',
-    jobType: 'Internship',
-    uploads: 3,
-    appliedOn: '08.07.2024',
-    status: 'Shortlisted',
-    score: 10,
-    scoreColor: 'text-green-600',
-  },
-  {
-    name: 'Gatikrushna Mohapatra',
-    role: 'User Interface Design Intern',
-    jobType: 'Internship',
-    uploads: 3,
-    appliedOn: '08.07.2024',
-    status: 'Shortlisted',
-    score: 9,
-    scoreColor: 'text-green-600',
-  },
-  {
-    name: 'Gatikrushna Mohapatra',
-    role: 'User Experience and Research Intern',
-    jobType: 'Full Time',
-    uploads: 3,
-    appliedOn: '08.11.2023',
-    status: 'May Fit',
-    score: 9,
-    scoreColor: 'text-green-600',
-  },
-  {
-    name: 'Gatikrushna Mohapatra',
-    role: 'User Experience and Research Intern',
-    jobType: 'Internship',
-    uploads: 3,
-    appliedOn: '08.01.2024',
-    status: 'New',
-    score: 7,
-    scoreColor: 'text-yellow-500',
-  },
-  {
-    name: 'Gatikrushna Mohapatra',
-    role: 'User Experience and Research Intern',
-    jobType: 'Full Time',
-    uploads: 3,
-    appliedOn: '08.1.2023',
-    status: 'Declined',
-    score: 2,
-    scoreColor: 'text-red-500',
-  },
-];
-
 const statusColorMap: Record<string, string> = {
-  Shortlisted: 'bg-blue-100 text-blue-700',
-  New: 'bg-purple-100 text-purple-700',
-  Declined: 'bg-red-100 text-red-700',
-  'May Fit': 'bg-yellow-100 text-yellow-700',
+  SHORTLISTED: 'bg-blue-100 text-blue-700',
+  PENDING: 'bg-purple-100 text-purple-700',
+  REJECTED: 'bg-red-100 text-red-700',
+  MAYBE: 'bg-yellow-100 text-yellow-700',
+  FINAL: 'bg-green-100 text-green-700',
+};
+
+const statusDisplayMap: Record<string, string> = {
+  SHORTLISTED: 'Shortlisted',
+  PENDING: 'New',
+  REJECTED: 'Declined',
+  MAYBE: 'May Fit',
+  FINAL: 'Final',
 };
 
 export default function ApplicantsPage() {
-  const [applicants, setApplicants] = useState<Applicant[]>(initialApplicants);
+  const [applicants, setApplicants] = useState<Applicant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
@@ -88,16 +52,88 @@ export default function ApplicantsPage() {
   } | null>(null);
   const router = useRouter();
 
-  const itemsPerPage = 3;
+  const itemsPerPage = 10;
+
+  // Fetch all applicants from all opportunities
+  useEffect(() => {
+    const fetchAllApplicants = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // First get all opportunities
+        const opportunitiesResponse = await fetch('/api/opportunities?page=1&limit=100');
+        if (!opportunitiesResponse.ok) {
+          throw new Error('Failed to fetch opportunities');
+        }
+        const opportunitiesData = await opportunitiesResponse.json();
+
+        if (!opportunitiesData.success || !opportunitiesData.data?.opportunities) {
+          throw new Error('No opportunities found');
+        }
+
+        // Fetch applicants for each opportunity
+        const allApplicants: Applicant[] = [];
+        
+        for (const opportunity of opportunitiesData.data.opportunities) {
+          try {
+            const applicantsResponse = await fetch(`/api/opportunities/${opportunity.id}/applicants?page=1&limit=100`);
+            if (applicantsResponse.ok) {
+              const applicantsData = await applicantsResponse.json();
+              
+              if (applicantsData.success && applicantsData.data?.applicants) {
+                const enhancedApplicants = applicantsData.data.applicants.map((applicant: any) => ({
+                  id: applicant.id,
+                  userId: applicant.userId,
+                  name: applicant.name || 'Anonymous',
+                  email: applicant.email || '',
+                  role: opportunity.role || opportunity.title,
+                  jobType: opportunity.type || 'Not specified',
+                  uploads: Object.values(applicant.documents?.summary || {}).filter(Boolean).length,
+                  appliedOn: new Date(applicant.appliedDate || applicant.createdAt).toLocaleDateString(),
+                  status: applicant.status,
+                  score: Math.floor(Math.random() * 10) + 1, // Generate score for display
+                  scoreColor: applicant.status === 'REJECTED' ? 'text-red-500' : 
+                             applicant.status === 'SHORTLISTED' ? 'text-green-600' : 
+                             'text-yellow-500',
+                  opportunityId: opportunity.id,
+                  opportunityTitle: opportunity.title
+                }));
+                
+                allApplicants.push(...enhancedApplicants);
+              }
+            }
+          } catch (err) {
+            console.warn(`Failed to fetch applicants for opportunity ${opportunity.id}:`, err);
+          }
+        }
+
+        setApplicants(allApplicants);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch applicants');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllApplicants();
+  }, []);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedFilter, advancedFilters]);
 
   const filteredApplicants = applicants.filter((a) => {
-    const matchesStatus =
-      selectedFilter === 'All' ||
-      a.status.toLowerCase() === selectedFilter.toLowerCase();
+    const filterToStatus: Record<string, string[]> = {
+      'All': ['PENDING', 'SHORTLISTED', 'MAYBE', 'REJECTED', 'FINAL'],
+      'Shortlisted': ['SHORTLISTED'],
+      'New': ['PENDING'],
+      'Declined': ['REJECTED'],
+      'May Fit': ['MAYBE'],
+      'Final': ['FINAL']
+    };
+
+    const matchesStatus = filterToStatus[selectedFilter]?.includes(a.status) ?? true;
 
     const matchesScore =
       !advancedFilters ||
@@ -118,22 +154,78 @@ export default function ApplicantsPage() {
     startIndex + itemsPerPage
   );
 
-  const handleStatusChange = (index: number, newStatus: string) => {
-    const updated = [...applicants];
-    updated[index].status = newStatus;
-    setApplicants(updated);
+  const handleStatusChange = async (applicantId: string, newStatus: string) => {
+    try {
+      // Update status in database via API
+      const response = await fetch(`/api/opportunities/applicants/${applicantId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+
+      // Update local state
+      setApplicants(prev => 
+        prev.map(applicant => 
+          applicant.id === applicantId 
+            ? { ...applicant, status: newStatus as any }
+            : applicant
+        )
+      );
+    } catch (err) {
+      console.error('Error updating status:', err);
+      alert('Failed to update status. Please try again.');
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <h1 className="text-2xl font-bold text-gray-800 mb-1">Applicants</h1>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading applicants...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <h1 className="text-2xl font-bold text-gray-800 mb-1">Applicants</h1>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold text-gray-800 mb-1">Applicants</h1>
       <p className="text-gray-600 mb-6">
-        Here is the list of applicants applying for all the jobs you posted till now
+        Here is the list of applicants applying for all the jobs you posted ({applicants.length} total)
       </p>
 
       {/* Filter Buttons */}
       <div className="flex flex-wrap gap-3 mb-4">
-        {['All', 'Shortlisted', 'New', 'Declined', 'May Fit'].map((filter) => (
+        {['All', 'Shortlisted', 'New', 'Declined', 'May Fit', 'Final'].map((filter) => (
           <button
             key={filter}
             onClick={() => setSelectedFilter(filter)}
@@ -143,7 +235,17 @@ export default function ApplicantsPage() {
                 : 'border-gray-300 text-gray-700 hover:bg-gray-100'
             }`}
           >
-            {filter}
+            {filter} {filter === 'All' ? `(${applicants.length})` : 
+                     `(${applicants.filter(a => {
+                       const filterMap: Record<string, string> = {
+                         'Shortlisted': 'SHORTLISTED',
+                         'New': 'PENDING', 
+                         'Declined': 'REJECTED',
+                         'May Fit': 'MAYBE',
+                         'Final': 'FINAL'
+                       };
+                       return a.status === filterMap[filter];
+                     }).length})`}
           </button>
         ))}
         <ReviewFilterButton onClick={() => setShowAdvancedFilter(true)} />
@@ -151,22 +253,25 @@ export default function ApplicantsPage() {
 
       {/* Table Header */}
       <div className="grid grid-cols-7 gap-4 py-2 px-3 bg-gray-100 font-medium text-gray-700 rounded-md text-sm">
+        <div>Applicant</div>
         <div>Job Role</div>
-        <div>Role</div>
         <div>Job Type</div>
         <div>Uploads</div>
         <div>Applied on</div>
-        <div>Status Marked</div>
+        <div>Status</div>
         <div>Actions</div>
       </div>
 
       {/* Table Rows */}
-      {paginatedApplicants.map((applicant, index) => {
-        const globalIndex = startIndex + index;
-        return (
+      {filteredApplicants.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <p>No applicants found for the selected filter.</p>
+        </div>
+      ) : (
+        paginatedApplicants.map((applicant) => (
           <div
-            key={globalIndex}
-            className="grid grid-cols-7 gap-4 items-center border-b py-4 px-3 text-sm"
+            key={applicant.id}
+            className="grid grid-cols-7 gap-4 items-center border-b py-4 px-3 text-sm hover:bg-gray-50"
           >
             <div className="flex items-center gap-3">
               <Image
@@ -178,7 +283,7 @@ export default function ApplicantsPage() {
               />
               <div>
                 <div className="font-medium text-gray-900">{applicant.name}</div>
-                <div className="text-gray-500 text-xs">Applied 26 days ago</div>
+                <div className="text-gray-500 text-xs">{applicant.email}</div>
                 <div className={`text-xs font-semibold ${applicant.scoreColor}`}>
                   Score: {applicant.score}
                 </div>
@@ -191,26 +296,27 @@ export default function ApplicantsPage() {
             <div>
               <select
                 value={applicant.status}
-                onChange={(e) => handleStatusChange(globalIndex, e.target.value)}
+                onChange={(e) => handleStatusChange(applicant.id, e.target.value)}
                 className={`px-3 py-1 text-sm rounded-md shadow-md ${statusColorMap[applicant.status] || 'bg-white text-gray-700'}`}
               >
-                <option value="New">New</option>
-                <option value="Shortlisted">Shortlisted</option>
-                <option value="Declined">Declined</option>
-                <option value="May Fit">May Fit</option>
+                <option value="PENDING">New</option>
+                <option value="SHORTLISTED">Shortlisted</option>
+                <option value="REJECTED">Declined</option>
+                <option value="MAYBE">May Fit</option>
+                <option value="FINAL">Final</option>
               </select>
             </div>
             <div>
-             <button
-  onClick={() => router.push(`/all-applicants/${globalIndex}`)} // ✅ fixed
-  className="bg-[#4F8FF0] hover:bg-[#3B77D3] text-white px-4 py-2 rounded-md text-sm"
->
-  Review Application
-</button>
+              <button
+                onClick={() => router.push(`/all-applicants/${applicant.id}`)}
+                className="bg-[#4F8FF0] hover:bg-[#3B77D3] text-white px-4 py-2 rounded-md text-sm"
+              >
+                Review Application
+              </button>
             </div>
           </div>
-        );
-      })}
+        ))
+      )}
 
       {/* Pagination */}
       <div className="flex justify-center mt-6 gap-4">

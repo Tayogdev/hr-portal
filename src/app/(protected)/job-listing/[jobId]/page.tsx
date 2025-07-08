@@ -1,0 +1,685 @@
+// app/page.tsx
+"use client";
+
+import React, { useState, useEffect, useRef } from "react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Share2, SlidersHorizontal } from "lucide-react";
+// import { useRouter } from "next/navigation"; // Removed useRouter as it's unused
+// import { useParams } from "next/navigation"; // Removed useParams as it's unused
+import { AssignTaskModal } from './AssignTaskModal';
+import { ScheduleInterviewModal } from './ScheduleInterviewModal';
+import { format } from "date-fns";
+
+type TabId = "all" | "shortlisted" | "final" | "rejected";
+type Section = "none" | "profile" | "resume" | "contact" | "files" | "taskDetails" | "interviewDetails";
+
+type Applicant = {
+  id: number;
+  name: string;
+  title: string;
+  score: number;
+  tags: string[];
+  appliedDate: string;
+};
+
+// Extend Applicant type to include assignedTask and scheduledInterview
+type ApplicantWithTask = Applicant & {
+  assignedTask?: {
+    id: string;
+    title: string;
+    description: string;
+    dueDate: string;
+  };
+  scheduledInterview?: {
+    date: string; // Or Date, depending on how you store/display it (formatted in modal)
+    time: string;
+    interviewer: string;
+    mode: string;
+    link?: string;
+    notes?: string;
+  };
+};
+
+const mockApplicants: ApplicantWithTask[] = [
+  {
+    id: 2,
+    name: "Ananya Sharma",
+    title: "Frontend Developer Intern, IIIT Bangalore",
+    score: 9,
+    tags: ["React.js", "Tailwind CSS", "Next.js", "UI/UX"],
+    appliedDate: "18 days ago",
+  },
+  {
+    id: 3,
+    name: "Rohit Jain",
+    title: "Software Developer Trainee, NIT Trichy",
+    score: 8,
+    tags: ["JavaScript", "Node.js", "MongoDB", "REST APIs"],
+    appliedDate: "12 days ago",
+  },
+  {
+    id: 4,
+    name: "Meera Iyer",
+    title: "Data Analyst, pursuing B.Tech in Data Science from VIT",
+    score: 9,
+    tags: ["Python", "Pandas", "SQL", "Power BI", "Statistics"],
+    appliedDate: "8 days ago",
+  },
+  {
+    id: 5,
+    name: "Amit Kumar",
+    title: "DevOps Intern at TCS, Final year student - B.E. CS",
+    score: 7,
+    tags: ["Docker", "Kubernetes", "CI/CD", "AWS"],
+    appliedDate: "4 days ago",
+  },
+];
+
+export default function JobDetailPage() {
+  // const _router = useRouter(); // Removed
+  // const _params = useParams(); // Removed
+  // const _jobId = _params?.jobId as string; // Removed
+  const [markAsOpen, setMarkAsOpen] = useState(false);
+  const [applicants, setApplicants] = useState<ApplicantWithTask[]>(mockApplicants);
+  const [shortlistedApplicants, setShortlistedApplicants] = useState<Applicant[]>([]);
+  const [isAssignTaskModalOpen, setIsAssignTaskModalOpen] = useState(false);
+  const [isScheduleInterviewModalOpen, setIsScheduleInterviewModalOpen] = useState(false);
+
+  const [plusMenuOpen, setPlusMenuOpen] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<TabId>("all");
+  const [selectedFilter, setSelectedFilter] = useState<string>("All");
+  const [selectedApplicant, setSelectedApplicant] = useState<ApplicantWithTask | null>(null);
+  const [jobStatus, setJobStatus] = useState<"Live" | "Closed">("Live");
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<Section>("none");
+
+  const statusRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const plusMenuRef = useRef<HTMLDivElement>(null); // Ref for the plus menu
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (statusRef.current && !statusRef.current.contains(event.target as Node)) {
+        setStatusDropdownOpen(false);
+      }
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+      if (plusMenuRef.current && !plusMenuRef.current.contains(event.target as Node)) {
+        setPlusMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+
+  const tabs: { id: TabId; label: string }[] = [
+    { id: "all", label: `All Applicants (${applicants.length})` },
+    // Filter shortlisted applicants based on their 'id' to ensure type consistency
+    { id: "shortlisted", label: `Shortlisted (${applicants.filter(app => shortlistedApplicants.some(sa => sa.id === app.id)).length})` },
+    { id: "final", label: "Final Selections (0)" },
+    { id: "rejected", label: "Rejected (0)" },
+  ];
+
+  const filters = [
+    { id: "all", label: "All", count: `(${applicants.length})` },
+    { id: "strong", label: "Strong Fit", count: "(8)" },
+    { id: "good", label: "Good Fit", count: "(16)" },
+    { id: "potential", label: "Potential", count: "(32)" },
+    { id: "consider", label: "Consider", count: "(16)" },
+    { id: "declined", label: "Declined", count: "(8)" },
+  ];
+
+  const handleAssignTask = (taskDetails: { title: string; description: string; dueDate: string }) => {
+    if (selectedApplicant) {
+      const updatedApplicant: ApplicantWithTask = {
+        ...selectedApplicant,
+        assignedTask: {
+          id: `task-${Date.now()}`,
+          ...taskDetails,
+        },
+      };
+
+      setApplicants(prevApplicants =>
+        prevApplicants.map(app => (app.id === updatedApplicant.id ? updatedApplicant : app))
+      );
+
+      setSelectedApplicant(updatedApplicant);
+      setIsAssignTaskModalOpen(false);
+      setActiveSection("taskDetails");
+    }
+  };
+
+  const handleScheduleInterview = (interviewDetails: {
+    selectedDate: Date | undefined;
+    selectedTime: string;
+    notesForCandidate: string;
+    assignInterviewer: string;
+    modeOfInterview: string;
+    linkAddress: string;
+  }) => {
+    if (selectedApplicant) {
+      const updatedApplicant: ApplicantWithTask = {
+        ...selectedApplicant,
+        scheduledInterview: {
+          date: interviewDetails.selectedDate ? format(interviewDetails.selectedDate, 'PPP') : 'N/A',
+          time: interviewDetails.selectedTime,
+          interviewer: interviewDetails.assignInterviewer,
+          mode: interviewDetails.modeOfInterview,
+          link: interviewDetails.linkAddress,
+          notes: interviewDetails.notesForCandidate,
+        },
+      };
+
+      setApplicants(prevApplicants =>
+        prevApplicants.map(app => (app.id === updatedApplicant.id ? updatedApplicant : app))
+      );
+
+      setSelectedApplicant(updatedApplicant);
+      setIsScheduleInterviewModalOpen(false);
+      setActiveSection("interviewDetails");
+    }
+  };
+
+  return (
+    <div className="p-4 md:p-6">
+      {/* Header */}
+      <div className="bg-white rounded-lg p-4 mb-6 flex flex-col md:flex-row justify-between gap-4">
+        <div className="flex gap-4">
+          <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center">
+            <Image src="/job-icon.png" alt="Icon" width={24} height={24} />
+          </div>
+          <div>
+            <h1 className="text-lg md:text-xl font-semibold text-gray-900">
+              User Experience and Research Intern
+            </h1>
+            <p className="text-sm text-gray-500">Tech Japan • Remote • Needs 0/1</p>
+            <p className="text-sm text-gray-500">Posted on 08.07.2024 • Closing on 19.08.2024</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap" ref={statusRef}>
+          <button
+            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
+              jobStatus === "Live" ? "bg-green-100 text-green-800" : "bg-gray-200 text-gray-600"
+            }`}
+            onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
+          >
+            {jobStatus} ▼
+          </button>
+          {statusDropdownOpen && (
+            <div className="absolute mt-1 bg-white border rounded shadow z-10 w-32">
+              <button
+                className="w-full text-left px-3 py-2 hover:bg-gray-100"
+                onClick={() => {
+                  setJobStatus("Live");
+                  setStatusDropdownOpen(false);
+                }}
+              >
+                Live
+              </button>
+              <button
+                className="w-full text-left px-3 py-2 hover:bg-gray-100"
+                onClick={() => {
+                  setJobStatus("Closed");
+                  setStatusDropdownOpen(false);
+                }}
+              >
+                Closed
+              </button>
+            </div>
+          )}
+          <Button variant="outline" size="sm" className="text-gray-700">
+            Job Details
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-gray-500 hover:bg-gray-100"
+            onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              alert("Job link copied to clipboard!");
+            }}
+          >
+            <Share2 className="w-5 h-5" />
+          </Button>
+          <div className="relative" ref={menuRef}>
+            <button
+              className="p-2 hover:bg-gray-100 rounded-full"
+              onClick={() => setMenuOpen(!menuOpen)}
+            >
+              <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 13a1 1 0 100-2 1 1 0 000 2zM19 13a1 1 0 100-2 1 1 0 000 2zM5 13a1 1 0 100-2 1 1 0 000 2z" />
+              </svg>
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 mt-1 bg-white border rounded shadow z-10 w-40">
+                <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">
+                  Edit Job
+                </button>
+                <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">
+                  Delete Job
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200 mb-4 md:mb-6 overflow-x-auto">
+        <div className="flex gap-4 md:gap-8 whitespace-nowrap">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setSelectedTab(tab.id);
+                // When tab changes, clear selected applicant to avoid stale data
+                // Or you could re-select the first applicant of the new tab's list if available
+                setSelectedApplicant(null);
+                setActiveSection("none");
+              }}
+              className={`py-2 md:py-4 px-1 relative ${
+                selectedTab === tab.id
+                  ? "text-[#6366F1] font-medium"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab.label}
+              {selectedTab === tab.id && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6366F1]" />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 md:gap-4 mb-4 md:mb-6">
+        {selectedTab !== "shortlisted" && (
+          <>
+            {filters.map((filter) => (
+              <button
+                key={filter.id}
+                onClick={() => setSelectedFilter(filter.label)}
+                className={`px-3 md:px-4 py-1.5 rounded-full text-sm font-medium ${
+                  selectedFilter === filter.label
+                    ? "bg-[#6366F1] text-white"
+                    : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {filter.label} {filter.count}
+              </button>
+            ))}
+          </>
+        )}
+
+        {selectedTab !== "shortlisted" && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto flex items-center gap-2 text-sm border-gray-300 text-gray-700 hover:bg-gray-50"
+          >
+            <SlidersHorizontal className="w-4 h-4" /> Shortlist by filters
+          </Button>
+        )}
+      </div>
+
+      {/* Applicant Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Left Column */}
+        <div className="bg-white rounded-lg p-4 shadow-sm">
+          <h2 className="text-lg font-semibold mb-4">Applicants</h2>
+          {/* Render applicants based on selected tab */}
+          {/* Ensure we map over `applicants` and filter based on `shortlistedApplicants` for correct type */}
+          {(selectedTab === "all" ? applicants : applicants.filter(app => shortlistedApplicants.some(sa => sa.id === app.id))).map((applicant) => {
+            const isSelected = selectedApplicant?.id === applicant.id;
+            return (
+              <div
+                key={applicant.id}
+                onClick={() => {
+                  setSelectedApplicant(applicant);
+                  setActiveSection("none"); // Reset active section when selecting new applicant
+                }}
+                className={`flex gap-4 cursor-pointer p-4 border-l-4 ${
+                  isSelected ? "border-[#4F46E5] bg-gray-50" : "border-transparent"
+                } hover:bg-gray-50`}
+              >
+                <div className="w-12 h-12 rounded-full overflow-hidden">
+                  <Image
+                    src="/avatar-placeholder.png"
+                    alt={applicant.name}
+                    width={48}
+                    height={48}
+                    className="object-cover w-full h-full"
+                  />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 text-sm">{applicant.name}</h3>
+                  <p className="text-sm text-gray-600">{applicant.title}</p>
+                  <div className="text-sm text-[#6366F1] mt-1 flex flex-wrap gap-x-1">
+                    {applicant.tags.map((tag, idx) => (
+                      <span key={idx} className="text-blue-600">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex justify-between text-sm text-gray-500">
+                    <span>Applied {applicant.appliedDate}</span>
+                    <span className="text-green-600 font-semibold">Score: {applicant.score}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Right Column */}
+        <div className="md:col-span-2 bg-white rounded-2xl shadow p-4 md:p-6">
+          {selectedApplicant ? (
+            <>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                  <h2 className="text-lg md:text-xl font-semibold text-gray-900">
+                    {selectedApplicant.name}
+                  </h2>
+                  <p className="text-sm text-gray-700 mt-1">{selectedApplicant.title}</p>
+                </div>
+                <div className="text-gray-500 text-xl font-bold">⋯</div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 text-sm text-indigo-600 font-medium mt-4">
+                {selectedApplicant.tags.map((tag, idx) => (
+                  <span key={idx}>{tag}</span>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap justify-between items-center gap-4 mt-4">
+                {/* Left section: tabs */}
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { label: "Profile", key: "profile" },
+                    { label: "Resume/ CV", key: "resume" },
+                    { label: "Contacts", key: "contact" },
+                    { label: "2 files ▼", key: "files" },
+                    // Add a button to view interview details if scheduled
+                  ]
+                  .filter((item): item is { label: string; key: Section } => item !== null)
+                  .map(({ label, key }) => (
+                    <button
+                      key={key}
+                      onClick={() => setActiveSection(activeSection === key ? "none" : (key as Section))}
+                      className={`rounded-full px-4 py-1.5 text-sm font-medium border ${
+                        activeSection === key
+                          ? "border-blue-600 text-blue-600 bg-blue-50"
+                          : "text-gray-700 border-gray-300 hover:bg-gray-100"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Right section: Action Buttons based on Tab */}
+                {selectedTab === "all" && (
+                  <div className="flex gap-2 relative">
+                    <div className="relative">
+                      <button
+                        className="rounded-full px-4 py-1.5 text-sm font-medium border border-blue-600 text-blue-600 hover:bg-blue-50"
+                        onClick={() => setMarkAsOpen(!markAsOpen)}
+                      >
+                        Mark as <span className="ml-1">▼</span>
+                      </button>
+
+                      {markAsOpen && (
+                        <div className="absolute top-full mt-2 left-0 bg-white border shadow-md rounded-md z-20 w-40">
+                          <button
+                            className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100"
+                            onClick={() => {
+                              alert("Marked as Rejected");
+                              setMarkAsOpen(false);
+                            }}
+                          >
+                            Reject
+                          </button>
+                          <button
+                            className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100"
+                            onClick={() => {
+                              alert("Marked as Maybe");
+                              setMarkAsOpen(false);
+                            }}
+                          >
+                            Maybe
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700"
+                      onClick={() => {
+                        if (selectedApplicant) {
+                          // Prevent adding duplicates to shortlistedApplicants
+                          if (!shortlistedApplicants.some(app => app.id === selectedApplicant.id)) {
+                               setShortlistedApplicants((prev) => [...prev, selectedApplicant]);
+                           }
+                           setSelectedTab("shortlisted");
+                          // You might want to automatically select this applicant again in the new tab
+                          // or let the default behavior (first applicant of the new tab) occur.
+                          // For now, it will likely select the first applicant in the 'shortlisted' array.
+                        }
+                      }}
+                    >
+                      Shortlist
+                    </button>
+                  </div>
+                )}
+
+                {selectedTab === "shortlisted" && (
+                  <div className="flex gap-2">
+                    <div className="relative">
+                      <button className="rounded-full px-4 py-1.5 text-sm font-medium border border-blue-600 text-blue-600 hover:bg-blue-50">
+                        Shortlist <span className="ml-1">▼</span>
+                      </button>
+                      {/* Dropdown for Shortlist (if needed in future) */}
+                    </div>
+                    <button className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700">
+                      Finalize
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Dynamic Assign/View Task Button and Schedule Interview Button */}
+
+
+{selectedTab === "shortlisted" && selectedApplicant && (
+  <div className="flex justify-end gap-2 mt-8">
+    {selectedApplicant.assignedTask ? (
+      <button
+        className="rounded-full px-4 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100 flex items-center gap-1"
+        onClick={() => setActiveSection("taskDetails")}
+      >
+        View Task
+      </button>
+    ) : (
+      <button
+        className="rounded-full px-4 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100 flex items-center gap-1"
+        onClick={() => setIsAssignTaskModalOpen(true)}
+      >
+        Assign Task <span className="ml-1 text-base">+</span>
+      </button>
+    )}
+
+    {selectedApplicant.scheduledInterview ? (
+      <button
+        className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700 flex items-center gap-1"
+        onClick={() => setActiveSection("interviewDetails")}
+      >
+        Interview Scheduled <span className="ml-1 text-base">🗓️</span>
+      </button>
+    ) : (
+      <button
+        className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700 flex items-center gap-1"
+        onClick={() => setIsScheduleInterviewModalOpen(true)}
+      >
+        Schedule Interview <span className="ml-1 text-base">🗓️</span>
+      </button>
+    )}
+
+    {/* Conditionally render the '+' button and its dropdown */}
+    {(selectedApplicant.assignedTask || selectedApplicant.scheduledInterview) && (
+      <div className="relative" ref={plusMenuRef}>
+        <button
+          className="rounded-full w-10 h-10 border border-gray-300 text-gray-700 hover:bg-gray-100 flex items-center justify-center text-xl"
+          onClick={() => setPlusMenuOpen(!plusMenuOpen)}
+        >
+          +
+        </button>
+
+        {plusMenuOpen && (
+          <div className="absolute right-0 mt-2 w-60 bg-white border rounded shadow z-20">
+            {selectedApplicant?.assignedTask && (
+              <button
+                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+                onClick={() => {
+                  setIsAssignTaskModalOpen(true);
+                  setPlusMenuOpen(false);
+                }}
+              >
+                ✏️ Edit Assigned Task
+              </button>
+            )}
+
+            {selectedApplicant?.scheduledInterview && (
+              <button
+                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+                onClick={() => {
+                  setIsScheduleInterviewModalOpen(true);
+                  setPlusMenuOpen(false);
+                }}
+              >
+                📅 Edit Scheduled Interview
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
+
+              {activeSection === "profile" && (
+                <div className="mt-6">
+                  <h4 className="text-md font-semibold mb-2">Profile Summary</h4>
+                  <p className="text-gray-700 text-sm">Hi Raj, how are you?</p>
+                </div>
+              )}
+
+              {activeSection === "resume" && (
+                <div className="mt-6 w-full h-[500px] md:h-[700px]">
+                  <iframe
+                    src="/resume-sample.pdf"
+                    className="w-full h-full rounded-md border"
+                    title="Resume PDF"
+                  />
+                </div>
+              )}
+
+              {activeSection === "files" && (
+                <div className="mt-6 bg-gray-50 border rounded-md p-4 space-y-2">
+                  <a
+                    href="/portfolio.pdf"
+                    target="_blank"
+                    className="block text-indigo-600 hover:underline"
+                  >
+                    Portfolio.pdf
+                  </a>
+                  <a
+                    href="/case-study.pdf"
+                    target="_blank"
+                    className="block text-indigo-600 hover:underline"
+                  >
+                    Case Study.pdf
+                  </a>
+                </div>
+              )}
+
+              {activeSection === "contact" && (
+                <div id="contact-info" className="mt-10">
+                  <h4 className="text-md font-semibold mb-2">Contact Info</h4>
+                  <p>Email: example@example.com</p>
+                  <p>Phone: +91 1234567890</p>
+                </div>
+              )}
+
+              {activeSection === "taskDetails" && selectedApplicant?.assignedTask && (
+                <div className="mt-6 p-4 border rounded-md bg-blue-50">
+                  <h4 className="text-md font-semibold mb-2 text-blue-800">Assigned Task Details</h4>
+                  <p className="text-gray-800">
+                    <span className="font-medium">Task Title:</span> {selectedApplicant.assignedTask.title}
+                  </p>
+                  <p className="text-gray-800 mt-1">
+                    <span className="font-medium">Description:</span> {selectedApplicant.assignedTask.description}
+                  </p>
+                  <p className="text-gray-800 mt-1">
+                    <span className="font-medium">Due Date:</span> {selectedApplicant.assignedTask.dueDate}
+                  </p>
+                </div>
+              )}
+
+              {activeSection === "interviewDetails" && selectedApplicant?.scheduledInterview && (
+                <div className="mt-6 p-4 border rounded-md bg-green-50">
+                  <h4 className="text-md font-semibold mb-2 text-green-800">Interview Details</h4>
+                  <p className="text-gray-800">
+                    <span className="font-medium">Date:</span> {selectedApplicant.scheduledInterview.date}
+                  </p>
+                  <p className="text-gray-800 mt-1">
+                    <span className="font-medium">Time:</span> {selectedApplicant.scheduledInterview.time}
+                  </p>
+                  <p className="text-gray-800 mt-1">
+                    <span className="font-medium">Interviewer:</span> {selectedApplicant.scheduledInterview.interviewer}
+                  </p>
+                  <p className="text-gray-800 mt-1">
+                    <span className="font-medium">Mode:</span> {selectedApplicant.scheduledInterview.mode}
+                  </p>
+                  {selectedApplicant.scheduledInterview.link && (
+                    <p className="text-gray-800 mt-1">
+                      <span className="font-medium">Link:</span> <a href={selectedApplicant.scheduledInterview.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{selectedApplicant.scheduledInterview.link}</a>
+                    </p>
+                  )}
+                  {selectedApplicant.scheduledInterview.notes && (
+                    <p className="text-gray-800 mt-1">
+                      <span className="font-medium">Notes:</span> {selectedApplicant.scheduledInterview.notes}
+                    </p>
+                  )}
+                </div>
+              )}
+
+            </>
+          ) : (
+            <p className="text-gray-500">Select an applicant to view details.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Modals */}
+      <AssignTaskModal
+        isOpen={isAssignTaskModalOpen}
+        onClose={() => setIsAssignTaskModalOpen(false)}
+        selectedApplicantName={selectedApplicant?.name}
+        onAssignTask={handleAssignTask}
+      />
+
+      <ScheduleInterviewModal
+        isOpen={isScheduleInterviewModalOpen}
+        onClose={() => setIsScheduleInterviewModalOpen(false)}
+        selectedApplicantName={selectedApplicant?.name}
+        onScheduleInterview={handleScheduleInterview}
+      />
+    </div>
+  );
+}

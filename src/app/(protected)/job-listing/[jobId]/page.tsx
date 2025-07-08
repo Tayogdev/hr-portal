@@ -42,6 +42,8 @@ export default function JobDetailPage() {
   const [jobStatus, setJobStatus] = useState<"Live" | "Closed">("Live");
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [jobMenuOpen, setJobMenuOpen] = useState(false); // ⬅ separate state for the 3-dot job menu
+
   const [activeSection, setActiveSection] = useState<Section>("none");
  const handleUpdateStatus = (status: "REJECTED" | "MAYBE") => {
     if (selectedApplicant) {
@@ -430,26 +432,30 @@ export default function JobDetailPage() {
           >
             <Share2 className="w-5 h-5" />
           </Button>
+
+
           <div className="relative" ref={menuRef}>
-            <button
-              className="p-2 hover:bg-gray-100 rounded-full"
-              onClick={() => setMenuOpen(!menuOpen)}
-            >
-              <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 13a1 1 0 100-2 1 1 0 000 2zM19 13a1 1 0 100-2 1 1 0 000 2zM5 13a1 1 0 100-2 1 1 0 000 2z" />
-              </svg>
-            </button>
-            {menuOpen && (
-              <div className="absolute right-0 mt-1 bg-white border rounded shadow z-10 w-40">
-                <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">
-                  Edit Job
-                </button>
-                <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">
-                  Delete Job
-                </button>
-              </div>
-            )}
-          </div>
+  <button
+    className="p-2 hover:bg-gray-100 rounded-full"
+    onClick={() => setJobMenuOpen(!jobMenuOpen)}
+  >
+    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 13a1 1 0 100-2 1 1 0 000 2zM19 13a1 1 0 100-2 1 1 0 000 2zM5 13a1 1 0 100-2 1 1 0 000 2z" />
+    </svg>
+  </button>
+
+  {jobMenuOpen && (
+    <div className="absolute right-0 mt-1 bg-white border rounded shadow z-10 w-40">
+      <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">
+        Edit Job
+      </button>
+      <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">
+        Delete Job
+      </button>
+    </div>
+  )}
+</div>
+
         </div>
       </div>
 
@@ -676,81 +682,84 @@ export default function JobDetailPage() {
                 )}
               </div>
 
-              {/* Task and Interview buttons for shortlisted */}
+   {/* Task and Interview buttons for shortlisted */}
 {selectedTab === "shortlisted" && selectedApplicant && (
- <div className="flex justify-end gap-2 mt-8">
-  {/* View or Assign Task Button */}
-  {selectedApplicant.assignedTask ? (
-    <button
-      className="rounded-full px-4 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100"
-      onClick={() => setActiveSection("taskDetails")}
-    >
-      View Task
-    </button>
-  ) : (
-    <button
-      className="rounded-full px-4 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100 flex items-center gap-1"
-      onClick={() => setIsAssignTaskModalOpen(true)}
-    >
-      Assign Task <span className="ml-1 text-base">+</span>
-    </button>
-  )}
+  <div className="flex justify-end gap-2 mt-8">
+    {/* View or Assign Task Button */}
+    {selectedApplicant.assignedTask ? (
+      <button
+        className="rounded-full px-4 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100"
+        onClick={() => setActiveSection("taskDetails")}
+      >
+        View Task
+      </button>
+    ) : (
+      <button
+        className="rounded-full px-4 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100 flex items-center gap-1"
+        onClick={() => setIsAssignTaskModalOpen(true)}
+      >
+        Assign Task <span className="ml-1 text-base">+</span>
+      </button>
+    )}
 
-  {/* Schedule or View Interview Button */}
-  {selectedApplicant.scheduledInterview ? (
-    <button
-      className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700 flex items-center gap-1"
-      onClick={() => setActiveSection("interviewDetails")}
-    >
-      Interview Scheduled <span className="ml-1 text-base">🗓️</span>
-    </button>
-  ) : (
-    <button
-      className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700 flex items-center gap-1"
-      onClick={() => setIsScheduleInterviewModalOpen(true)}
-    >
-      Schedule Interview <span className="ml-1 text-base">🗓️</span>
-    </button>
-  )}
+    {/* Schedule or View Interview Button */}
+    {selectedApplicant.scheduledInterview ? (
+      <button
+        className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700 flex items-center gap-1"
+        onClick={() => setActiveSection("interviewDetails")}
+      >
+        Interview Scheduled <span className="ml-1 text-base">🗓️</span>
+      </button>
+    ) : (
+      <button
+        className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700 flex items-center gap-1"
+        onClick={() => setIsScheduleInterviewModalOpen(true)}
+      >
+        Schedule Interview <span className="ml-1 text-base">🗓️</span>
+      </button>
+    )}
 
-  {/* ✅ Unified Edit Dropdown Button */}
-  <div className="relative">
-    <button
-      className="rounded-full p-2 border border-gray-300 text-gray-700 hover:bg-gray-100"
-      onClick={() => setMenuOpen(prev => !prev)}
-      title="Edit Options"
-    >
-      <Pencil className="w-4 h-4" />
-    </button>
-    {menuOpen && (
-      <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow z-50">
-        {selectedApplicant.assignedTask && (
-          <button
-            className="w-full text-left px-4 py-2 hover:bg-gray-100"
-            onClick={() => {
-              setIsAssignTaskModalOpen(true);
-              setMenuOpen(false);
-            }}
-          >
-            ✏️ Edit Assigned Task
-          </button>
-        )}
-        {selectedApplicant.scheduledInterview && (
-          <button
-            className="w-full text-left px-4 py-2 hover:bg-gray-100"
-            onClick={() => {
-              setIsScheduleInterviewModalOpen(true);
-              setMenuOpen(false);
-            }}
-          >
-            📅 Edit Scheduled Interview
-          </button>
+    {/* ✅ Show Edit button only if at least one action is available */}
+    {(selectedApplicant.assignedTask || selectedApplicant.scheduledInterview) && (
+      <div className="relative">
+        <button
+          className="rounded-full p-2 border border-gray-300 text-gray-700 hover:bg-gray-100"
+          onClick={() => setMenuOpen(prev => !prev)}
+          title="Edit Options"
+        >
+          <Pencil className="w-4 h-4" />
+        </button>
+        {menuOpen && (
+          <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow z-50">
+            {selectedApplicant.assignedTask && (
+              <button
+                className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                onClick={() => {
+                  setIsAssignTaskModalOpen(true);
+                  setMenuOpen(false);
+                }}
+              >
+                ✏️ Edit Assigned Task
+              </button>
+            )}
+            {selectedApplicant.scheduledInterview && (
+              <button
+                className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                onClick={() => {
+                  setIsScheduleInterviewModalOpen(true);
+                  setMenuOpen(false);
+                }}
+              >
+                📅 Edit Scheduled Interview
+              </button>
+            )}
+          </div>
         )}
       </div>
     )}
   </div>
-</div>
 )}
+
               {/* Content sections */}
               {activeSection === "profile" && (
                 <div className="mt-6">

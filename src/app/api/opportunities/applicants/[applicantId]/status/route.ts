@@ -14,11 +14,15 @@ export const dynamic = 'force-dynamic';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { applicantId: string } }
+  { params }: { params: Promise<{ applicantId: string }> }
 ) {
   try {
+    const { applicantId } = await params;
+    
     const authError = await validateAPIRouteWithRateLimit(request);
-    if (authError) return authError;
+    if (authError) {
+      return authError;
+    }
 
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
     if (!token?.sub) {
@@ -30,7 +34,6 @@ export async function PUT(
       }, { status: 401 });
     }
 
-    const { applicantId } = params;
     const body = await request.json();
     const { status } = body;
 
@@ -79,9 +82,9 @@ export async function PUT(
     // Update applicant status
     const updateQuery = `
       UPDATE "opportunityApplicants" 
-      SET "applicationStatus" = $1, "updatedAt" = CURRENT_TIMESTAMP
+      SET "applicationStatus" = $1
       WHERE id = $2
-      RETURNING id, "applicationStatus", "updatedAt"
+      RETURNING id, "applicationStatus", "createdAt"
     `;
 
     const result = await pool.query(updateQuery, [status, applicantId]);
@@ -95,7 +98,7 @@ export async function PUT(
         applicant: {
           id: updatedApplicant.id,
           applicationStatus: updatedApplicant.applicationStatus,
-          updatedAt: updatedApplicant.updatedAt
+          updatedAt: updatedApplicant.createdAt
         },
         changes: {
           from: oldStatus,
@@ -109,6 +112,50 @@ export async function PUT(
     return NextResponse.json({
       success: false,
       message: 'Failed to update applicant status',
+      timestamp: new Date().toISOString(),
+      error: { 
+        code: 'INTERNAL_ERROR', 
+        details: error instanceof Error ? error.message : String(error) 
+      }
+    }, { status: 500 });
+  }
+} 
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ applicantId: string }> }
+) {
+  try {
+    const { applicantId } = await params;
+    
+    // Check if applicant exists
+    const result = await pool.query(
+      'SELECT id, "applicationStatus", "createdAt" FROM "opportunityApplicants" WHERE id = $1',
+      [applicantId]
+    );
+    
+    if (result.rows.length === 0) {
+      return NextResponse.json({
+        success: false,
+        message: 'Applicant not found',
+        timestamp: new Date().toISOString()
+      }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Applicant found',
+      timestamp: new Date().toISOString(),
+      data: {
+        applicant: result.rows[0]
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting applicant status:', error);
+    return NextResponse.json({
+      success: false,
+      message: 'Failed to get applicant status',
       timestamp: new Date().toISOString(),
       error: { 
         code: 'INTERNAL_ERROR', 

@@ -30,6 +30,12 @@ type AssignTaskModalProps = {
   selectedApplicantName?: string; // Optional prop for the applicant's name
   onAssignTask: (taskDetails: TaskDetails) => void;
   initialTaskData?: InitialTaskDetails | null; // New prop for pre-populating the form
+  editingTask?: {
+    id: string;
+    title: string;
+    description: string;
+    dueDate: string;
+  } | null;
 };
 
 export const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
@@ -38,6 +44,7 @@ export const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
   selectedApplicantName,
   onAssignTask,
   initialTaskData, // Destructure the new prop
+  editingTask, // New prop for editing existing task
 }) => {
   // All HOOKS MUST BE DECLARED HERE, UNCONDITIONALLY, AT THE TOP LEVEL
   const [taskTitle, setTaskTitle] = useState<string>('');
@@ -58,8 +65,19 @@ export const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
     if (isOpen) { // Only run logic if modal is actually open
       setShowSuccessMessage(false); // Ensure success message is hidden on open
 
-      // Populate form fields if initialTaskData is provided
-      if (initialTaskData) {
+      // Populate form fields if editingTask or initialTaskData is provided
+      if (editingTask) {
+        setTaskTitle(editingTask.title || '');
+        setDescription(editingTask.description || '');
+        setDueDate(formatISODateToDatetimeLocal(editingTask.dueDate)); // Format for datetime-local input
+        setTags(''); // Default empty for editing
+        setUploadedFileName(null);
+
+        // Set timestamps for editing mode
+        const now = new Date();
+        setCreatedOn(formatDateTime(now)); // Show current time as created
+        setUpdatedOn(formatDateTime(now)); // Show current time as updated
+      } else if (initialTaskData) {
         setTaskTitle(initialTaskData.title || '');
         setDescription(initialTaskData.description || '');
         setDueDate(formatISODateToDatetimeLocal(initialTaskData.dueDate)); // Format for datetime-local input
@@ -85,7 +103,7 @@ export const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
         setUpdatedOn(formattedNow);
       }
     }
-  }, [isOpen, initialTaskData]); // Depend on isOpen and initialTaskData
+  }, [isOpen, initialTaskData, editingTask]); // Depend on isOpen, initialTaskData, and editingTask
 
 
   // If the modal is not open, don't render anything to optimize performance.
@@ -222,7 +240,7 @@ export const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
           ) : (
             // Task Assignment Form View
             <>
-              <h2 className="text-xl font-semibold mb-6 text-gray-900">{initialTaskData ? "Edit Task" : "Attach Document"}</h2>
+              <h2 className="text-xl font-semibold mb-6 text-gray-900">{editingTask || initialTaskData ? "Edit Task" : "Attach Document"}</h2>
 
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow overflow-y-auto pr-2">
                 {/* Left Column: Upload Document and Manual Details */}
@@ -377,7 +395,7 @@ export const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
 
                   {/* Assign Task Button */}
                   <Button type="submit" className="w-full bg-[#6366F1] text-white py-2 rounded-md hover:bg-indigo-700 mt-6">
-                    {initialTaskData ? "Update Task" : "Assign Task"}
+                    {editingTask || initialTaskData ? "Update Task" : "Assign Task"}
                   </Button>
                 </div>
               </form>

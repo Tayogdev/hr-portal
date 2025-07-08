@@ -68,6 +68,7 @@ export interface ApplicantProfile {
     dueDate: string;
   };
   scheduledInterview?: {
+    id: string;
     date: string;
     time: string;
     interviewer: string;

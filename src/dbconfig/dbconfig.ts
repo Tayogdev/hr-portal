@@ -8,7 +8,20 @@ const pool = new Pool({
   port: 5432,
   ssl: {
     rejectUnauthorized: false
-  }
+  },
+
+  // ✅ Performance optimizations inside the same object
+  max: 10, // Maximum number of clients in the pool
+  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+  query_timeout: 10000, // Return an error after 10 seconds if query is still running
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000
+});
+
+// Handle pool errors
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
 });
 
 export default pool;

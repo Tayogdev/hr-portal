@@ -178,7 +178,7 @@ export const AssignTaskModal: React.FC<AssignTaskModalProps> = ({
   return (
     <>
       {/* Main modal overlay and content container */}
-      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
         {/* Modal Content Container */}
         <div
           className="bg-white rounded-lg p-6 w-full max-w-sm sm:max-w-md md:max-w-xl lg:max-w-3xl xl:max-w-5xl

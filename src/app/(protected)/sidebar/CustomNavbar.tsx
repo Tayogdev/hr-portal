@@ -85,7 +85,7 @@ export default function CustomNavbar(): React.JSX.Element {
         `}
       >
         {/* Logo Section - Fixed */}
-        <div className="flex items-center justify-center px-4 py-6 border-b border-gray-100">
+        <div className="flex items-center justify-center px-4 py-6 border-gray-100">
           <Image
             src="https://www.tayog.in/assets/logo/full_blue.svg"
             alt="tayog logo"

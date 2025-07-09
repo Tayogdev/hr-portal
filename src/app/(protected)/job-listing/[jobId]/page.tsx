@@ -30,37 +30,173 @@ export default function JobDetailPage() {
 
   const [markAsOpen, setMarkAsOpen] = useState(false);
   const [applicants, setApplicants] = useState<ApplicantProfile[]>([]);
-  const [shortlistedApplicants, setShortlistedApplicants] = useState<ApplicantProfile[]>([]);
   const [opportunity, setOpportunity] = useState<OpportunityDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAssignTaskModalOpen, setIsAssignTaskModalOpen] = useState(false);
   const [isScheduleInterviewModalOpen, setIsScheduleInterviewModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<{
+    id: string;
+    title: string;
+    description: string;
+    dueDate: string;
+  } | null>(null);
+  const [editingInterview, setEditingInterview] = useState<{
+    id: string;
+    date: string;
+    time: string;
+    interviewer: string;
+    mode: string;
+    link?: string;
+    notes?: string;
+  } | null>(null);
   const [selectedTab, setSelectedTab] = useState<TabId>("all");
   const [selectedFilter, setSelectedFilter] = useState<string>("All");
   const [selectedApplicant, setSelectedApplicant] = useState<ApplicantProfile | null>(null);
+  
+  // Debug states
+  useEffect(() => {
+    console.log('Modal states changed:', {
+      isAssignTaskModalOpen,
+      isScheduleInterviewModalOpen,
+      editingTask: !!editingTask,
+      editingInterview: !!editingInterview,
+      selectedApplicant: selectedApplicant?.name
+    });
+  }, [isAssignTaskModalOpen, isScheduleInterviewModalOpen, editingTask, editingInterview, selectedApplicant]);
   const [jobStatus, setJobStatus] = useState<"Live" | "Closed">("Live");
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [jobMenuOpen, setJobMenuOpen] = useState(false); // ⬅ separate state for the 3-dot job menu
 
   const [activeSection, setActiveSection] = useState<Section>("none");
- const handleUpdateStatus = (status: "REJECTED" | "MAYBE") => {
+
+
+  const handleUpdateStatus = async (status: "REJECTED" | "MAYBE" | "SHORTLISTED") => {
     if (selectedApplicant) {
-      const updatedApplicant = {
-        ...selectedApplicant,
-        status: status,
-      };
+      try {
+        const response = await fetch(`/api/opportunities/applicants/${selectedApplicant.id}/status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ status }),
+        });
 
-      // When updating the main applicants array, the derived filteredApplicants will automatically update
-      const updatedApplicants = applicants.map(app =>
-        app.id === selectedApplicant.id ? updatedApplicant : app
-      );
-      setApplicants(updatedApplicants); // Update the main source of truth for applicants
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Response error:', errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
 
-      setSelectedApplicant(updatedApplicant);
-      setMarkAsOpen(false);
+        const result = await response.json();
+
+        if (result.success) {
+          const updatedApplicant = {
+            ...selectedApplicant,
+            status: status,
+          };
+
+          // Update the main applicants array
+          const updatedApplicants = applicants.map(app =>
+            app.id === selectedApplicant.id ? updatedApplicant : app
+          );
+          setApplicants(updatedApplicants);
+          setSelectedApplicant(updatedApplicant);
+          setMarkAsOpen(false);
+
+          // Show success message
+          alert(`Applicant status updated to ${status} successfully!`);
+        } else {
+          throw new Error(result.message || 'Failed to update status');
+        }
+      } catch (error) {
+        console.error('Error updating status:', error);
+        alert(`Failed to update status. Error: ${error instanceof Error ? error.message : error}`);
+      }
+    } else {
+      console.error('No selected applicant when trying to update status');
+      alert('Please select an applicant first');
     }
+  };
+
+  const handleShortlist = async () => {
+    if (!selectedApplicant) {
+      alert('Please select an applicant first');
+      return;
+    }
+
+    try {
+      await handleUpdateStatus("SHORTLISTED");
+      // Switch to shortlisted tab after successful shortlisting
+      setSelectedTab("shortlisted");
+    } catch (error) {
+      console.error('Error in handleShortlist:', error);
+      // Don't show another alert since handleUpdateStatus already shows one
+    }
+  };
+
+  const handleEditTask = () => {
+    console.log('handleEditTask called');
+    console.log('selectedApplicant:', selectedApplicant);
+    console.log('assignedTask:', selectedApplicant?.assignedTask);
+    
+    if (selectedApplicant?.assignedTask) {
+      console.log('Setting editing task and opening modal');
+      setEditingTask(selectedApplicant.assignedTask);
+      setIsAssignTaskModalOpen(true);
+      setMenuOpen(false); // Close dropdown
+    } else {
+      console.log('No assigned task found');
+      alert('No task found to edit');
+    }
+  };
+
+  const handleEditInterview = () => {
+    console.log('handleEditInterview called');
+    console.log('selectedApplicant:', selectedApplicant);
+    console.log('scheduledInterview:', selectedApplicant?.scheduledInterview);
+    
+    if (selectedApplicant?.scheduledInterview) {
+      console.log('Setting editing interview and opening modal');
+      setEditingInterview(selectedApplicant.scheduledInterview);
+      setIsScheduleInterviewModalOpen(true);
+      setMenuOpen(false); // Close dropdown
+    } else {
+      console.log('No scheduled interview found');
+      alert('No interview found to edit');
+    }
+  };
+
+  const handleAssignNewTask = () => {
+    console.log('handleAssignNewTask called - creating new task');
+    setEditingTask(null);
+    setIsAssignTaskModalOpen(true);
+  };
+
+  const handleScheduleNewInterview = () => {
+    console.log('handleScheduleNewInterview called - creating new interview');
+    setEditingInterview(null);
+    setIsScheduleInterviewModalOpen(true);
+  };
+
+  const handleViewTaskDetails = () => {
+    setActiveSection("taskDetails");
+  };
+
+  const handleViewInterviewDetails = () => {
+    setActiveSection("interviewDetails");
+  };
+
+  const handleCloseTaskModal = () => {
+    setIsAssignTaskModalOpen(false);
+    setEditingTask(null);
+  };
+
+  const handleCloseInterviewModal = () => {
+    setIsScheduleInterviewModalOpen(false);
+    setEditingInterview(null);
   };
   const statusRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -96,14 +232,67 @@ export default function JobDetailPage() {
         const data: ApplicantsApiResponse = await response.json();
         
         if (data.success) {
-          // Enhance applicant data with UI fields
-          const enhancedApplicants = data.data.applicants.map(enhanceApplicantData);
+          // Enhance applicant data with UI fields and fetch tasks/interviews
+          const enhancedApplicants = await Promise.all(
+            data.data.applicants.map(async (applicant) => {
+              const enhanced = enhanceApplicantData(applicant);
+              
+              // Fetch tasks for this applicant
+              try {
+                const tasksResponse = await fetch(`/api/tasks?opportunityId=${jobId}&applicantId=${applicant.id}`, {
+                  credentials: 'include'
+                });
+                if (tasksResponse.ok) {
+                  const tasksData = await tasksResponse.json();
+                  if (tasksData.success && tasksData.data.tasks.length > 0) {
+                    const latestTask = tasksData.data.tasks[0]; // Get the most recent task
+                    enhanced.assignedTask = {
+                      id: latestTask.id,
+                      title: latestTask.title,
+                      description: latestTask.description,
+                      dueDate: latestTask.dueDate,
+                    };
+                  }
+                }
+              } catch (error) {
+                console.warn('Failed to fetch tasks for applicant', applicant.id, error);
+              }
+
+              // Fetch interviews for this applicant
+              try {
+                const interviewsResponse = await fetch(`/api/interviews?opportunityId=${jobId}&applicantId=${applicant.id}`, {
+                  credentials: 'include'
+                });
+                if (interviewsResponse.ok) {
+                  const interviewsData = await interviewsResponse.json();
+                  if (interviewsData.success && interviewsData.data.interviews.length > 0) {
+                    const latestInterview = interviewsData.data.interviews[0]; // Get the most recent interview
+                    enhanced.scheduledInterview = {
+                      id: latestInterview.id, // Store ID
+                      date: new Date(latestInterview.scheduledDate).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      }),
+                      time: latestInterview.scheduledTime,
+                      interviewer: latestInterview.interviewerName || 'TBD',
+                      mode: latestInterview.modeOfInterview,
+                      link: latestInterview.linkAddress,
+                      notes: latestInterview.notesForCandidate,
+                    };
+                  }
+                }
+              } catch (error) {
+                console.warn('Failed to fetch interviews for applicant', applicant.id, error);
+              }
+
+              return enhanced;
+            })
+          );
+          
           setApplicants(enhancedApplicants);
           setOpportunity(data.data.opportunity);
-          
-          // Set shortlisted applicants based on status
-          const shortlisted = enhancedApplicants.filter(app => app.status === 'SHORTLISTED');
-          setShortlistedApplicants(shortlisted);
         } else {
           throw new Error(data.message || 'Failed to fetch applicants');
         }
@@ -164,7 +353,7 @@ export default function JobDetailPage() {
   const getFilteredApplicants = () => {
     let filtered = applicants;
     
-    // Filter by tab
+    // Filter by tab first
     switch (selectedTab) {
       case "shortlisted":
         filtered = applicants.filter(app => app.status === 'SHORTLISTED');
@@ -179,8 +368,8 @@ export default function JobDetailPage() {
         filtered = applicants;
     }
 
-    // Apply additional filters if not on shortlisted tab
-    if (selectedTab !== "shortlisted" && selectedFilter !== "All") {
+    // Apply score-based filters (now works on all tabs including shortlisted)
+    if (selectedFilter !== "All") {
       switch (selectedFilter) {
         case "Strong Fit":
           filtered = filtered.filter(app => app.score && app.score >= 8);
@@ -209,13 +398,25 @@ export default function JobDetailPage() {
     if (!selectedApplicant) return;
 
     try {
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
+      let apiUrl;
+      let method;
+      let bodyData;
+
+      if (editingTask) {
+        // Update existing task
+        apiUrl = `/api/tasks/${editingTask.id}`;
+        method = 'PUT';
+        bodyData = {
+          title: taskDetails.title,
+          description: taskDetails.description,
+          dueDate: taskDetails.dueDate,
+          tags: taskDetails.tags,
+        };
+      } else {
+        // Create new task
+        apiUrl = '/api/tasks';
+        method = 'POST';
+        bodyData = {
           opportunityId: jobId,
           applicantId: selectedApplicant.id,
           title: taskDetails.title,
@@ -223,13 +424,22 @@ export default function JobDetailPage() {
           dueDate: taskDetails.dueDate,
           tags: taskDetails.tags,
           uploadedFileName: taskDetails.uploadedFileName
-        }),
+        };
+      }
+
+             const response = await fetch(apiUrl, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(bodyData),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        // Update the applicant with the new task
+        // Update the applicant with the task data
         const updatedApplicant: ApplicantProfile = {
           ...selectedApplicant,
           assignedTask: {
@@ -246,16 +456,17 @@ export default function JobDetailPage() {
 
         setSelectedApplicant(updatedApplicant);
         setIsAssignTaskModalOpen(false);
+        setEditingTask(null); // Clear editing state
         setActiveSection("taskDetails");
         
         // Show success message
-        alert('Task assigned successfully!');
+        alert(editingTask ? 'Task updated successfully!' : 'Task assigned successfully!');
       } else {
-        throw new Error(result.message || 'Failed to assign task');
+        throw new Error(result.message || (editingTask ? 'Failed to update task' : 'Failed to assign task'));
       }
     } catch (error) {
-      console.error('Error assigning task:', error);
-      alert('Failed to assign task. Please try again.');
+      console.error('Error with task:', error);
+      alert(`Failed to ${editingTask ? 'update' : 'assign'} task. Please try again.`);
     }
   };
 
@@ -278,13 +489,27 @@ export default function JobDetailPage() {
         return;
       }
 
-      const response = await fetch('/api/interviews', { 
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
+      let apiUrl;
+      let method;
+      let bodyData;
+
+      if (editingInterview && editingInterview.id) {
+        // Update existing interview
+        apiUrl = `/api/interviews/${editingInterview.id}`;
+        method = 'PUT';
+        bodyData = {
+          interviewerName: interviewDetails.assignInterviewer,
+          scheduledDate: scheduledDate,
+          scheduledTime: interviewDetails.selectedTime,
+          modeOfInterview: interviewDetails.modeOfInterview,
+          linkAddress: interviewDetails.linkAddress,
+          notesForCandidate: interviewDetails.notesForCandidate
+        };
+      } else {
+        // Create new interview
+        apiUrl = '/api/interviews';
+        method = 'POST';
+        bodyData = {
           opportunityId: jobId,
           applicantId: selectedApplicant.id,
           interviewerName: interviewDetails.assignInterviewer,
@@ -293,16 +518,26 @@ export default function JobDetailPage() {
           modeOfInterview: interviewDetails.modeOfInterview,
           linkAddress: interviewDetails.linkAddress,
           notesForCandidate: interviewDetails.notesForCandidate
-        }),
+        };
+      }
+
+      const response = await fetch(apiUrl, { 
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(bodyData),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        // Update the applicant with the new interview
+        // Update the applicant with the interview data
         const updatedApplicant: ApplicantProfile = {
           ...selectedApplicant,
           scheduledInterview: {
+            id: editingInterview?.id || result.data.interview.id,
             date: interviewDetails.selectedDate ? format(interviewDetails.selectedDate, 'PPP') : 'N/A',
             time: interviewDetails.selectedTime,
             interviewer: interviewDetails.assignInterviewer,
@@ -318,16 +553,17 @@ export default function JobDetailPage() {
 
         setSelectedApplicant(updatedApplicant);
         setIsScheduleInterviewModalOpen(false);
+        setEditingInterview(null); // Clear editing state
         setActiveSection("interviewDetails");
         
         // Show success message
-        alert('Interview scheduled successfully!');
+        alert(editingInterview ? 'Interview updated successfully!' : 'Interview scheduled successfully!');
       } else {
-        throw new Error(result.message || 'Failed to schedule interview');
+        throw new Error(result.message || (editingInterview ? 'Failed to update interview' : 'Failed to schedule interview'));
       }
     } catch (error) {
-      console.error('Error scheduling interview:', error);
-      alert('Failed to schedule interview. Please try again.');
+      console.error('Error with interview:', error);
+      alert(`Failed to ${editingInterview ? 'update' : 'schedule'} interview. Please try again.`);
     }
   };
 
@@ -487,30 +723,27 @@ export default function JobDetailPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 md:gap-4 mb-4 md:mb-6">
-        {selectedTab !== "shortlisted" &&
-          filters.map((filter) => (
-            <button
-              key={filter.id}
-              onClick={() => setSelectedFilter(filter.label)}
-              className={`px-3 md:px-4 py-1.5 rounded-full text-sm font-medium ${
-                selectedFilter === filter.label
-                  ? "bg-[#6366F1] text-white"
-                  : "border border-gray-300 text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              {filter.label} {filter.count}
-            </button>
-          ))}
-
-        {selectedTab !== "shortlisted" && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="ml-auto flex items-center gap-2 text-sm border-gray-300 text-gray-700 hover:bg-gray-50"
+        {filters.map((filter) => (
+          <button
+            key={filter.id}
+            onClick={() => setSelectedFilter(filter.label)}
+            className={`px-3 md:px-4 py-1.5 rounded-full text-sm font-medium ${
+              selectedFilter === filter.label
+                ? "bg-[#6366F1] text-white"
+                : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+            }`}
           >
-            <SlidersHorizontal className="w-4 h-4" /> Shortlist by filters
-          </Button>
-        )}
+            {filter.label} {filter.count}
+          </button>
+        ))}
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-auto flex items-center gap-2 text-sm border-gray-300 text-gray-700 hover:bg-gray-50"
+        >
+          <SlidersHorizontal className="w-4 h-4" /> Shortlist by filters
+        </Button>
       </div>
       {/* Applicant Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -606,7 +839,10 @@ export default function JobDetailPage() {
                     { label: "Profile", key: "profile" },
                     { label: "Resume/ CV", key: "resume" },
                     { label: "Contacts", key: "contact" },
-                    { label: "2 files ▼", key: "files" },
+                    { 
+                      label: `${Object.values(selectedApplicant.documents?.summary || {}).filter(Boolean).length} files ▼`, 
+                      key: "files" 
+                    },
                   ].map(({ label, key }) => (
                     <button
                       key={key}
@@ -654,14 +890,7 @@ export default function JobDetailPage() {
 
                     <button
                       className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700"
-                      onClick={() => {
-                        if (selectedApplicant) {
-                          if (!shortlistedApplicants.some(app => app.id === selectedApplicant.id)) {
-                               setShortlistedApplicants((prev) => [...prev, selectedApplicant]);
-                           }
-                           setSelectedTab("shortlisted");
-                        }
-                      }}
+                      onClick={handleShortlist}
                     >
                       Shortlist
                     </button>
@@ -689,14 +918,14 @@ export default function JobDetailPage() {
     {selectedApplicant.assignedTask ? (
       <button
         className="rounded-full px-4 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100"
-        onClick={() => setActiveSection("taskDetails")}
+        onClick={handleViewTaskDetails}
       >
         View Task
       </button>
     ) : (
       <button
         className="rounded-full px-4 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100 flex items-center gap-1"
-        onClick={() => setIsAssignTaskModalOpen(true)}
+        onClick={handleAssignNewTask}
       >
         Assign Task <span className="ml-1 text-base">+</span>
       </button>
@@ -706,14 +935,14 @@ export default function JobDetailPage() {
     {selectedApplicant.scheduledInterview ? (
       <button
         className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700 flex items-center gap-1"
-        onClick={() => setActiveSection("interviewDetails")}
+        onClick={handleViewInterviewDetails}
       >
         Interview Scheduled <span className="ml-1 text-base">🗓️</span>
       </button>
     ) : (
       <button
         className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700 flex items-center gap-1"
-        onClick={() => setIsScheduleInterviewModalOpen(true)}
+        onClick={handleScheduleNewInterview}
       >
         Schedule Interview <span className="ml-1 text-base">🗓️</span>
       </button>
@@ -721,10 +950,13 @@ export default function JobDetailPage() {
 
     {/* ✅ Show Edit button only if at least one action is available */}
     {(selectedApplicant.assignedTask || selectedApplicant.scheduledInterview) && (
-      <div className="relative">
+      <div className="relative" ref={menuRef}>
         <button
           className="rounded-full p-2 border border-gray-300 text-gray-700 hover:bg-gray-100"
-          onClick={() => setMenuOpen(prev => !prev)}
+          onClick={() => {
+            console.log('Edit menu clicked, current state:', menuOpen);
+            setMenuOpen(prev => !prev);
+          }}
           title="Edit Options"
         >
           <Pencil className="w-4 h-4" />
@@ -734,9 +966,10 @@ export default function JobDetailPage() {
             {selectedApplicant.assignedTask && (
               <button
                 className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                onClick={() => {
-                  setIsAssignTaskModalOpen(true);
-                  setMenuOpen(false);
+                onClick={(e) => {
+                  console.log('Edit task clicked');
+                  e.stopPropagation();
+                  handleEditTask();
                 }}
               >
                 ✏️ Edit Assigned Task
@@ -745,9 +978,10 @@ export default function JobDetailPage() {
             {selectedApplicant.scheduledInterview && (
               <button
                 className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                onClick={() => {
-                  setIsScheduleInterviewModalOpen(true);
-                  setMenuOpen(false);
+                onClick={(e) => {
+                  console.log('Edit interview clicked');
+                  e.stopPropagation();
+                  handleEditInterview();
                 }}
               >
                 📅 Edit Scheduled Interview
@@ -763,45 +997,223 @@ export default function JobDetailPage() {
               {/* Content sections */}
               {activeSection === "profile" && (
                 <div className="mt-6">
-                  <h4 className="text-md font-semibold mb-2">Profile Summary</h4>
-                  <p className="text-gray-700 text-sm">Applicant profile information</p>
+                  <h4 className="text-md font-semibold mb-4">Profile Summary</h4>
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                    <div>
+                      <span className="font-medium text-gray-700">Name:</span>
+                      <span className="ml-2 text-gray-900">{selectedApplicant.name}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Email:</span>
+                      <span className="ml-2 text-gray-900">{selectedApplicant.email}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">User ID:</span>
+                      <span className="ml-2 text-gray-900">{selectedApplicant.userId}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Application Status:</span>
+                      <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
+                        selectedApplicant.status === 'SHORTLISTED' ? 'bg-blue-100 text-blue-800' :
+                        selectedApplicant.status === 'FINAL' ? 'bg-green-100 text-green-800' :
+                        selectedApplicant.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {selectedApplicant.status}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Applied Date:</span>
+                      <span className="ml-2 text-gray-900">{selectedApplicant.appliedDate}</span>
+                    </div>
+                    {selectedApplicant.score && (
+                      <div>
+                        <span className="font-medium text-gray-700">Score:</span>
+                        <span className={`ml-2 font-semibold ${
+                          selectedApplicant.score >= 8 ? 'text-green-600' :
+                          selectedApplicant.score >= 6 ? 'text-yellow-600' :
+                          'text-gray-600'
+                        }`}>
+                          {selectedApplicant.score}/10
+                        </span>
+                      </div>
+                    )}
+                    {selectedApplicant.tags && selectedApplicant.tags.length > 0 && (
+                      <div>
+                        <span className="font-medium text-gray-700">Skills/Tags:</span>
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          {selectedApplicant.tags.map((tag, idx) => (
+                            <span key={idx} className="bg-blue-100 text-blue-800 px-2 py-1 text-xs rounded">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
               {activeSection === "resume" && (
-                <div className="mt-6 w-full h-[500px] md:h-[700px]">
-                  <iframe
-                    src="/resume-sample.pdf"
-                    className="w-full h-full rounded-md border"
-                    title="Resume PDF"
-                  />
+                <div className="mt-6">
+                  {selectedApplicant.documents?.summary?.cv ? (
+                    (() => {
+                      const cvUrl = selectedApplicant.documents.summary.cv;
+                      const isValidUrl = cvUrl.startsWith('http://') || cvUrl.startsWith('https://') || cvUrl.startsWith('data:');
+                      
+                      if (isValidUrl) {
+                        return (
+                          <div className="w-full h-[500px] md:h-[700px]">
+                            <iframe
+                              src={cvUrl}
+                              className="w-full h-full rounded-md border"
+                              title="Resume PDF"
+                              onError={() => {
+                                console.error('Failed to load resume:', cvUrl);
+                              }}
+                            />
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div className="text-center py-12 text-gray-500">
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                              <div className="flex items-center">
+                                <svg className="w-5 h-5 text-yellow-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                                <span className="text-yellow-800 font-medium">Invalid Resume URL</span>
+                              </div>
+                              <p className="text-yellow-700 mt-1 text-sm">
+                                The resume URL is not valid: {cvUrl}
+                              </p>
+                            </div>
+                            <p>Unable to display resume/CV due to invalid URL.</p>
+                          </div>
+                        );
+                      }
+                    })()
+                  ) : (
+                    <div className="text-center py-12 text-gray-500">
+                      <p>No resume/CV available for this applicant.</p>
+                    </div>
+                  )}
                 </div>
               )}
 
               {activeSection === "files" && (
-                <div className="mt-6 bg-gray-50 border rounded-md p-4 space-y-2">
-                  <a
-                    href="/portfolio.pdf"
-                    target="_blank"
-                    className="block text-indigo-600 hover:underline"
-                  >
-                    Portfolio.pdf
-                  </a>
-                  <a
-                    href="/case-study.pdf"
-                    target="_blank"
-                    className="block text-indigo-600 hover:underline"
-                  >
-                    Case Study.pdf
-                  </a>
+                <div className="mt-6 bg-gray-50 border rounded-md p-4">
+                  <h4 className="text-md font-semibold mb-3">Documents</h4>
+                  {selectedApplicant.documents?.summary ? (
+                    <div className="space-y-2">
+                      {Object.entries(selectedApplicant.documents.summary).map(([docType, docUrl]) => {
+                        if (!docUrl) return null;
+                        
+                        const docTypeLabels: Record<string, string> = {
+                          cv: 'Resume/CV',
+                          portfolio: 'Portfolio',
+                          sops: 'Statement of Purpose',
+                          lor: 'Letter of Recommendation',
+                          researchProposal: 'Research Proposal',
+                          coverLetter: 'Cover Letter'
+                        };
+                        
+                        // Check if the URL is valid (starts with http/https or is a data URL)
+                        const isValidUrl = docUrl.startsWith('http://') || docUrl.startsWith('https://') || docUrl.startsWith('data:');
+                        
+                        if (isValidUrl) {
+                          return (
+                            <a
+                              key={docType}
+                              href={docUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-between p-3 bg-white rounded border hover:bg-gray-50 transition-colors"
+                            >
+                              <span className="text-indigo-600 font-medium">
+                                {docTypeLabels[docType] || docType}
+                              </span>
+                              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                          );
+                        } else {
+                          // For invalid URLs, show a disabled link with a message
+                          return (
+                            <div
+                              key={docType}
+                              className="flex items-center justify-between p-3 bg-gray-100 rounded border opacity-50"
+                              title={`Invalid document URL: ${docUrl}`}
+                            >
+                              <span className="text-gray-600 font-medium">
+                                {docTypeLabels[docType] || docType} (Invalid URL)
+                              </span>
+                              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                              </svg>
+                            </div>
+                          );
+                        }
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500">No documents available for this applicant.</p>
+                  )}
                 </div>
               )}
 
               {activeSection === "contact" && (
-                <div id="contact-info" className="mt-10">
-                  <h4 className="text-md font-semibold mb-2">Contact Info</h4>
-                  <p>Email: {selectedApplicant.email}</p>
-                  <p>User ID: {selectedApplicant.userId}</p>
+                <div id="contact-info" className="mt-6">
+                  <h4 className="text-md font-semibold mb-4">Contact Information</h4>
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8m-18 8h18a2 2 0 002-2V6a2 2 0 00-2-2H3a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      <div>
+                        <span className="font-medium text-gray-700">Email:</span>
+                        <span className="ml-2 text-gray-900">{selectedApplicant.email}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <div>
+                        <span className="font-medium text-gray-700">User ID:</span>
+                        <span className="ml-2 text-gray-900 font-mono text-sm">{selectedApplicant.userId}</span>
+                      </div>
+                    </div>
+                    {selectedApplicant.image && (
+                      <div className="flex items-center gap-3">
+                        <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <div>
+                          <span className="font-medium text-gray-700">Profile Image:</span>
+                          {(() => {
+                            const imageUrl = selectedApplicant.image;
+                            const isValidUrl = imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:');
+                            
+                            if (isValidUrl) {
+                              return (
+                                <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-600 hover:underline">
+                                  View Image
+                                </a>
+                              );
+                            } else {
+                              return (
+                                <span className="ml-2 text-gray-500" title={`Invalid image URL: ${imageUrl}`}>
+                                  Invalid URL
+                                </span>
+                              );
+                            }
+                          })()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -838,9 +1250,24 @@ export default function JobDetailPage() {
                   {selectedApplicant.scheduledInterview.link && (
                     <p className="text-gray-800 mt-1">
                       <span className="font-medium">Link:</span> 
-                      <a href={selectedApplicant.scheduledInterview.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-1">
-                        {selectedApplicant.scheduledInterview.link}
-                      </a>
+                      {(() => {
+                        const linkUrl = selectedApplicant.scheduledInterview.link;
+                        const isValidUrl = linkUrl.startsWith('http://') || linkUrl.startsWith('https://');
+                        
+                        if (isValidUrl) {
+                          return (
+                            <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-1">
+                              {linkUrl}
+                            </a>
+                          );
+                        } else {
+                          return (
+                            <span className="ml-1 text-gray-500" title={`Invalid link URL: ${linkUrl}`}>
+                              {linkUrl} (Invalid URL)
+                            </span>
+                          );
+                        }
+                      })()}
                     </p>
                   )}
                   {selectedApplicant.scheduledInterview.notes && (
@@ -861,16 +1288,18 @@ export default function JobDetailPage() {
       {/* Modals */}
       <AssignTaskModal
         isOpen={isAssignTaskModalOpen}
-        onClose={() => setIsAssignTaskModalOpen(false)}
+        onClose={handleCloseTaskModal}
         selectedApplicantName={selectedApplicant?.name}
         onAssignTask={handleAssignTask}
+        editingTask={editingTask}
       />
 
       <ScheduleInterviewModal
         isOpen={isScheduleInterviewModalOpen}
-        onClose={() => setIsScheduleInterviewModalOpen(false)}
+        onClose={handleCloseInterviewModal}
         selectedApplicantName={selectedApplicant?.name}
         onScheduleInterview={handleScheduleInterview}
+        editingInterview={editingInterview}
       />
     </div>
   );

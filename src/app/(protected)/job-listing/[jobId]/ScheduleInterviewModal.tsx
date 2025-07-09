@@ -30,9 +30,17 @@ type ScheduleInterviewModalProps = {
   onClose: () => void;
   selectedApplicantName?: string;
   onScheduleInterview: (details: InterviewDetails) => void; // <--- NEW PROP
+  editingInterview?: {
+    date: string;
+    time: string;
+    interviewer: string;
+    mode: string;
+    link?: string;
+    notes?: string;
+  } | null;
 };
 
-export const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({ isOpen, onClose, selectedApplicantName, onScheduleInterview }) => {
+export const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({ isOpen, onClose, selectedApplicantName, onScheduleInterview, editingInterview }) => {
   // All useState calls are already at the top level, unconditionally
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>('9:00 AM');
@@ -44,6 +52,35 @@ export const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({ 
 
   const interviewers = ['John Doe', 'Jane Smith', 'Mike Ross', 'Sarah Lee'];
   const timeSlots = ['9:00 AM', '10:00 AM', '12:00 PM', '3:00 PM', '4:00 PM'];
+
+  // useEffect to handle editing state
+  React.useEffect(() => {
+    if (isOpen && editingInterview) {
+      // Parse the date string back to Date object
+      try {
+        const parsedDate = new Date(editingInterview.date);
+        if (!isNaN(parsedDate.getTime())) {
+          setSelectedDate(parsedDate);
+        }
+      } catch {
+        console.warn('Failed to parse interview date:', editingInterview.date);
+      }
+      
+      setSelectedTime(editingInterview.time || '9:00 AM');
+      setNotesForCandidate(editingInterview.notes || '');
+      setAssignInterviewer(editingInterview.interviewer || '');
+      setModeOfInterview(editingInterview.mode || 'Google Meet');
+      setLinkAddress(editingInterview.link || '');
+    } else if (isOpen && !editingInterview) {
+      // Reset form for new interview
+      setSelectedDate(undefined);
+      setSelectedTime('9:00 AM');
+      setNotesForCandidate('');
+      setAssignInterviewer('');
+      setModeOfInterview('Google Meet');
+      setLinkAddress('');
+    }
+  }, [isOpen, editingInterview]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,16 +143,16 @@ export const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({ 
                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
               ></path>
             </svg>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Interview Scheduled Successfully!</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">{editingInterview ? "Interview Updated Successfully!" : "Interview Scheduled Successfully!"}</h2>
             <p className="text-gray-600 text-center">
-              The interview for {selectedApplicantName || 'the applicant'} has been successfully scheduled.
+              The interview for {selectedApplicantName || 'the applicant'} has been successfully {editingInterview ? "updated" : "scheduled"}.
               The modal will close shortly.
             </p>
           </div>
         ) : (
           <>
             <h2 className="text-xl font-semibold mb-6 text-gray-900">
-              When do you want your interview to be conducted? Select a date
+              {editingInterview ? "Edit Interview Schedule" : "When do you want your interview to be conducted? Select a date"}
             </h2>
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow overflow-y-auto pr-2">
@@ -241,7 +278,7 @@ export const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({ 
                 </div>
 
                 <Button type="submit" className="w-full bg-[#6366F1] text-white py-2 rounded-md hover:bg-indigo-700 mt-6">
-                  Schedule
+                  {editingInterview ? "Update Interview" : "Schedule"}
                 </Button>
               </div>
             </form>

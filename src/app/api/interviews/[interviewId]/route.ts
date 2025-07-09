@@ -21,7 +21,7 @@ export async function GET(
     const authError = await validateAPIRouteWithRateLimit(request);
     if (authError) return authError;
 
-    const { interviewId } = params;
+    const { interviewId } = await params;
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -124,7 +124,7 @@ export async function PUT(
       }, { status: 401 });
     }
 
-    const { interviewId } = params;
+    const { interviewId } = await params;
     const body = await request.json();
     const {
       interviewerId,
@@ -309,7 +309,7 @@ export async function DELETE(
       }, { status: 401 });
     }
 
-    const { interviewId } = params;
+    const { interviewId } = await params;
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

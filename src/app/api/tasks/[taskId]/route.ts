@@ -21,7 +21,7 @@ export async function GET(
     const authError = await validateAPIRouteWithRateLimit(request);
     if (authError) return authError;
 
-    const { taskId } = params;
+    const { taskId } = await params;
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -120,7 +120,7 @@ export async function PUT(
       }, { status: 401 });
     }
 
-    const { taskId } = params;
+    const { taskId } = await params;
     const body = await request.json();
     const { title, description, dueDate, tags, status, submissionUrl, feedback } = body;
 
@@ -263,7 +263,7 @@ export async function DELETE(
       }, { status: 401 });
     }
 
-    const { taskId } = params;
+    const { taskId } = await params;
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

@@ -2,7 +2,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import SessionWrapper from '@/components/SessionWrapper';
-
+import QueryProvider from '@/components/QueryProvider';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 export const metadata: Metadata = {
@@ -20,9 +20,11 @@ export default function RootLayout({
       <body className="bg-white text-gray-900 antialiased">
         
         <ErrorBoundary>
-          <SessionWrapper>
-            {children}
-          </SessionWrapper>
+          <QueryProvider>
+            <SessionWrapper>
+              {children}
+            </SessionWrapper>
+          </QueryProvider>
         </ErrorBoundary>
       </body>
     </html>

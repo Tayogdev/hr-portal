@@ -17,20 +17,9 @@ const nextConfig = {
     ],
   },
   experimental: {
-    // Reduce memory usage during build
     workerThreads: false,
     cpus: 1,
-    // Turbopack configuration
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
-      },
-    },
   },
-  // Reduce build memory usage
   generateBuildId: async () => {
     return 'build-' + Date.now();
   },

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { useSession } from 'next-auth/react';
+import { useCallback } from 'react';
 
 type Job = {
   id: string;
@@ -55,6 +56,7 @@ export default function JobListingPage(): React.JSX.Element {
 
   const [startDate, endDate] = dateRange;
 
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
@@ -70,82 +72,61 @@ export default function JobListingPage(): React.JSX.Element {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+
+const fetchJobs = useCallback(async (page: number) => {
+  try {
+    setLoading(true);
+    setError(null);
+
+    if (!session) throw new Error('Please log in to view job listings');
+
+    const response = await fetch(`/api/opportunities?page=${page}&limit=10`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const errorMessages: Record<number, string> = {
+        401: 'Authentication required. Please log in again.',
+        403: 'Access denied. You do not have permission to view this content.',
+        429: 'Too many requests. Please try again later.',
+      };
+      throw new Error(errorMessages[response.status] || `Failed to fetch jobs (${response.status})`);
+    }
+
+    const result = await response.json();
+
+    if (result.success && result.data) {
+      setJobs(result.data.opportunities || []);
+      setPagination(result.data.pagination || {
+        total: 0,
+        page: 1,
+        totalPages: 1,
+        hasMore: false,
+      });
+    } else {
+      throw new Error(result.message || 'Unknown error occurred');
+    }
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Failed to load jobs';
+    console.error('Error fetching jobs:', errorMessage);
+    setError(errorMessage);
+    setJobs([]);
+    setPagination({ total: 0, page: 1, totalPages: 1, hasMore: false });
+  } finally {
+    setLoading(false);
+  }
+}, [session]);
+
+
   useEffect(() => {
     // Only fetch jobs if session is available
     if (session) {
       fetchJobs(currentPage);
     }
-  }, [currentPage, session]);
+  }, [currentPage, session, fetchJobs]);
 
-  const fetchJobs = async (page: number) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Make sure session is available before making API calls
-      if (!session) {
-        throw new Error('Please log in to view job listings');
-      }
-      
-      const response = await fetch(`/api/opportunities?page=${page}&limit=10`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Include session cookies
-      });
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Authentication required. Please log in again.');
-        } else if (response.status === 403) {
-          throw new Error('Access denied. You do not have permission to view this content.');
-        } else if (response.status === 429) {
-          throw new Error('Too many requests. Please try again in a moment.');
-        } else {
-          throw new Error(`Failed to fetch jobs (${response.status})`);
-        }
-      }
-      
-      const result = await response.json();
-      
-      // Handle the new structured API response
-      if (result.success && result.data) {
-        setJobs(result.data.opportunities || []);
-        setPagination(result.data.pagination || {
-          total: 0,
-          page: 1,
-          totalPages: 1,
-          hasMore: false
-        });
-      } else {
-        // Handle error response
-        const errorMessage = result.message || 'Unknown error occurred';
-        console.error('API Error:', errorMessage);
-        setError(errorMessage);
-        setJobs([]);
-        setPagination({
-          total: 0,
-          page: 1,
-          totalPages: 1,
-          hasMore: false
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching jobs:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load jobs';
-      setError(errorMessage);
-      setJobs([]);
-      setPagination({
-        total: 0,
-        page: 1,
-        totalPages: 1,
-        hasMore: false
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleStatusChange = (jobId: string, newStatus: 'Live' | 'Closed') => {
     setJobStatuses(prev => ({ ...prev, [jobId]: newStatus }));

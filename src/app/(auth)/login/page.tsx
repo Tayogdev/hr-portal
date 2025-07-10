@@ -9,53 +9,53 @@ export default function LoginPage() {
   const [tayogCredential, setTayogCredential] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
 
-  const handleLogin = (provider: 'google') => { // Only 'google' remains as an option
+  const handleLogin = (provider: 'google') => {
     setLoadingProvider(provider);
     signIn(provider, { callbackUrl: '/' });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Here you would typically send tayogCredential and verificationCode to your backend for authentication.
-    // For demonstration, we'll just log them.
     console.log('Tayog Credential:', tayogCredential);
     console.log('Verification Code:', verificationCode);
-    // You might want to add a loading state here for this form submission too
-    // and handle success/error responses from your API.
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-gray-100 overflow-hidden p-4">
-      {/* Background Shape */}
-      <div
-        className="absolute top-0 left-0 w-2/3 h-full bg-blue-100 rounded-br-[250px] transform origin-top-left -rotate-6 scale-125 md:rounded-br-[400px] md:w-1/2 lg:w-2/5 xl:w-1/3"
-        style={{
-          // Custom styles for a more specific shape or adjustment
-          zIndex: 0, // Ensure it's behind the content
-          filter: 'blur(50px)', // Soften the edges if desired
-          opacity: 0.7,
-        }}
-      ></div>
+    <div
+      className="relative min-h-screen flex items-center justify-center bg-white overflow-hidden p-4"
+    >
+      {/* Background Image */}
+      <Image
+        src="/login-bg.png" // Place this in the /public folder
+        alt="Login Background"
+        layout="fill"
+        objectFit="cover"
+        quality={100}
+        className="z-0"
+      />
+
+      {/* White overlay for clarity */}
+      <div className="absolute inset-0 bg-white opacity-90 z-10"></div>
 
       {/* Tayog Logo */}
       <div className="absolute top-8 left-8 z-20">
         <Image
-          src="/tayog-logo.svg" // **IMPORTANT: Replace with the actual path to your Tayog logo**
+          src="/tayog-logo.svg"
           alt="Tayog Logo"
-          width={120} // Adjust width as needed
-          height={40} // Adjust height as needed
+          width={120}
+          height={40}
           className="h-10 w-auto"
         />
       </div>
 
       {/* Main Login Card */}
-      <div className="relative z-10 bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm sm:max-w-md space-y-6">
+      <div className="relative z-30 bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm sm:max-w-md space-y-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-center text-blue-700">
           Welcome to <br /> Organization Dashboard
         </h1>
         <p className="text-center text-gray-600 text-sm sm:text-base">
           Mention your Organization credentials
-        </p>  
+        </p>
 
         {/* Google Login Button */}
         <button
@@ -115,7 +115,6 @@ export default function LoginPage() {
             <p className="mt-1 text-xs text-gray-500">Sent to your mail Id</p>
           </div>
 
-          {/* Main Login Button */}
           <button
             type="submit"
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-200"
@@ -124,10 +123,16 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Disclaimer Text */}
         <p className="text-center text-gray-500 text-xs mt-4">
           You are entering to Organization Dashboard for managing opportunities, events and Pages.
         </p>
+      </div>
+
+      {/* Bottom right indicators (optional) */}
+      <div className="absolute bottom-4 right-4 flex space-x-1 z-30">
+        <div className="w-3 h-3 bg-blue-600 rounded-sm" />
+        <div className="w-3 h-3 bg-blue-600 rounded-sm" />
+        <div className="w-3 h-3 bg-blue-600 rounded-sm" />
       </div>
     </div>
   );

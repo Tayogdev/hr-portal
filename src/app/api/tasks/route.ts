@@ -46,13 +46,13 @@ export async function GET(request: NextRequest) {
     let paramIndex = 1;
 
     if (opportunityId) {
-      whereConditions.push(`at."opportunityId" = $${paramIndex}`);
+      whereConditions.push(`at."opportunityId" = $${paramIndex}::uuid`);
       queryParams.push(opportunityId);
       paramIndex++;
     }
 
     if (applicantId) {
-      whereConditions.push(`at."applicantId" = $${paramIndex}`);
+      whereConditions.push(`at."applicantId" = $${paramIndex}::uuid`);
       queryParams.push(applicantId);
       paramIndex++;
     }
@@ -71,32 +71,21 @@ export async function GET(request: NextRequest) {
       FROM "assignedTasks" at
       ${whereClause}
     `;
-    const countResult = await pool.query(countQuery, queryParams);
+    const countResult = await pool.query(countQuery, queryParams.slice(0, paramIndex - 1));
     const totalCount = parseInt(countResult.rows[0].count);
 
-    // Get paginated tasks with related data
+    // Get paginated tasks with related data (simplified query without complex JOINs)
     const query = `
       SELECT 
-        at.*,
-        u.name as "assignedByName",
-        u.email as "assignedByEmail",
-        oa."userId" as "applicantUserId",
-        users.name as "applicantName",
-        users.email as "applicantEmail",
-        o.role as "opportunityRole",
-        o.title as "opportunityTitle"
+        at.*
       FROM "assignedTasks" at
-      LEFT JOIN users u ON at."userId" = u.id
-      LEFT JOIN "opportunityApplicants" oa ON at."applicantId" = oa.id
-      LEFT JOIN users ON oa."userId" = users.id
-      LEFT JOIN opportunities o ON at."opportunityId" = o.id
       ${whereClause}
       ORDER BY at."createdAt" DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 
-    queryParams.push(limit, offset);
-    const result = await pool.query(query, queryParams);
+    const mainQueryParams = [...queryParams, limit, offset];
+    const result = await pool.query(query, mainQueryParams);
 
     const response = NextResponse.json({
       success: true,
@@ -117,15 +106,7 @@ export async function GET(request: NextRequest) {
           submissionUrl: row.submissionUrl,
           feedback: row.feedback,
           createdAt: row.createdAt,
-          updatedAt: row.updatedAt,
-          // Additional data for frontend
-          assignedByName: row.assignedByName,
-          assignedByEmail: row.assignedByEmail,
-          applicantUserId: row.applicantUserId,
-          applicantName: row.applicantName,
-          applicantEmail: row.applicantEmail,
-          opportunityRole: row.opportunityRole,
-          opportunityTitle: row.opportunityTitle
+          updatedAt: row.updatedAt
         })),
         pagination: {
           total: totalCount,

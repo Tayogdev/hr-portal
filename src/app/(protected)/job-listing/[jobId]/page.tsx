@@ -201,6 +201,102 @@ export default function JobDetailPage() {
   const statusRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Function to fetch tasks and interviews for a specific applicant
+  const fetchApplicantTasksAndInterviews = async (applicant: ApplicantProfile) => {
+    console.log('🔍 Fetching tasks and interviews for applicant:', applicant.name, 'ID:', applicant.id);
+    const updatedApplicant = { ...applicant };
+
+    // Fetch tasks for this applicant
+    try {
+      console.log('📋 Fetching tasks...');
+      const tasksResponse = await fetch(`/api/tasks?opportunityId=${jobId}&applicantId=${applicant.id}`, {
+        credentials: 'include'
+      });
+      console.log('📋 Tasks response status:', tasksResponse.status);
+      
+      if (tasksResponse.ok) {
+        const tasksData = await tasksResponse.json();
+        console.log('📋 Tasks data:', tasksData);
+        
+        if (tasksData.success && tasksData.data.tasks.length > 0) {
+          const latestTask = tasksData.data.tasks[0]; // Get the most recent task
+          updatedApplicant.assignedTask = {
+            id: latestTask.id,
+            title: latestTask.title,
+            description: latestTask.description,
+            dueDate: latestTask.dueDate,
+          };
+          console.log('✅ Task assigned:', updatedApplicant.assignedTask);
+        } else {
+          console.log('❌ No tasks found for applicant');
+        }
+      } else {
+        console.log('❌ Tasks API call failed:', tasksResponse.status);
+      }
+    } catch (error) {
+      console.warn('❌ Failed to fetch tasks for applicant', applicant.id, error);
+    }
+
+    // Fetch interviews for this applicant
+    try {
+      console.log('🗓️ Fetching interviews...');
+      const interviewsResponse = await fetch(`/api/interviews?opportunityId=${jobId}&applicantId=${applicant.id}`, {
+        credentials: 'include'
+      });
+      console.log('🗓️ Interviews response status:', interviewsResponse.status);
+      
+      if (interviewsResponse.ok) {
+        const interviewsData = await interviewsResponse.json();
+        console.log('🗓️ Interviews data:', interviewsData);
+        
+        if (interviewsData.success && interviewsData.data.interviews.length > 0) {
+          const latestInterview = interviewsData.data.interviews[0]; // Get the most recent interview
+          updatedApplicant.scheduledInterview = {
+            id: latestInterview.id,
+            date: new Date(latestInterview.scheduledDate).toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            }),
+            time: latestInterview.scheduledTime,
+            interviewer: latestInterview.interviewerName || 'TBD',
+            mode: latestInterview.modeOfInterview,
+            link: latestInterview.linkAddress,
+            notes: latestInterview.notesForCandidate,
+          };
+          console.log('✅ Interview assigned:', updatedApplicant.scheduledInterview);
+        } else {
+          console.log('❌ No interviews found for applicant');
+        }
+      } else {
+        console.log('❌ Interviews API call failed:', interviewsResponse.status);
+      }
+    } catch (error) {
+      console.warn('❌ Failed to fetch interviews for applicant', applicant.id, error);
+    }
+
+    console.log('🔄 Final updated applicant:', updatedApplicant);
+    return updatedApplicant;
+  };
+
+  // Enhanced applicant selection handler
+  const handleApplicantSelection = async (applicant: ApplicantProfile) => {
+    console.log('👤 Applicant selected:', applicant.name, 'Current task:', applicant.assignedTask, 'Current interview:', applicant.scheduledInterview);
+    
+    // Always fetch the latest tasks and interviews to ensure data is current
+    const updatedApplicant = await fetchApplicantTasksAndInterviews(applicant);
+    
+    // Update the applicant in the state
+    setApplicants(prevApplicants =>
+      prevApplicants.map(app => (app.id === updatedApplicant.id ? updatedApplicant : app))
+    );
+    
+    console.log('✅ Setting selected applicant with updated data:', updatedApplicant);
+    setSelectedApplicant(updatedApplicant);
+    setActiveSection("none");
+  };
+
   // Fetch applicants data
   useEffect(() => {
     const fetchApplicantsData = async () => {
@@ -761,9 +857,8 @@ export default function JobDetailPage() {
               <div
                 key={applicant.id}
                 onClick={() => {
-                  setSelectedApplicant(applicant);
-                    setActiveSection("none");
-                  }}
+                  handleApplicantSelection(applicant);
+                }}
                   className={`flex gap-4 cursor-pointer p-4 border-l-4 rounded-r-lg mb-3 transition-all ${
                     isSelected 
                       ? "border-blue-500 bg-blue-50 shadow-sm" 

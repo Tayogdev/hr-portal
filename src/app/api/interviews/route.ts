@@ -49,19 +49,19 @@ export async function GET(request: NextRequest) {
     let paramIndex = 1;
 
     if (opportunityId) {
-      whereConditions.push(`si."opportunityId" = $${paramIndex}`);
+      whereConditions.push(`si."opportunityId" = $${paramIndex}::uuid`);
       queryParams.push(opportunityId);
       paramIndex++;
     }
 
     if (applicantId) {
-      whereConditions.push(`si."applicantId" = $${paramIndex}`);
+      whereConditions.push(`si."applicantId" = $${paramIndex}::uuid`);
       queryParams.push(applicantId);
       paramIndex++;
     }
 
     if (interviewerId) {
-      whereConditions.push(`si."interviewerId" = $${paramIndex}`);
+      whereConditions.push(`si."interviewerId" = $${paramIndex}::uuid`);
       queryParams.push(interviewerId);
       paramIndex++;
     }
@@ -92,35 +92,21 @@ export async function GET(request: NextRequest) {
       FROM "scheduledInterviews" si
       ${whereClause}
     `;
-    const countResult = await pool.query(countQuery, queryParams);
+    const countResult = await pool.query(countQuery, queryParams.slice(0, paramIndex - 1));
     const totalCount = parseInt(countResult.rows[0].count);
 
-    // Get paginated interviews with related data
+    // Get paginated interviews with related data (simplified query without complex JOINs)
     const query = `
       SELECT 
-        si.*,
-        scheduled_by.name as "scheduledByName",
-        scheduled_by.email as "scheduledByEmail",
-        interviewer.name as "interviewerUserName",
-        interviewer.email as "interviewerUserEmail",
-        oa."userId" as "applicantUserId",
-        applicant_user.name as "applicantName",
-        applicant_user.email as "applicantEmail",
-        o.role as "opportunityRole",
-        o.title as "opportunityTitle"
+        si.*
       FROM "scheduledInterviews" si
-      LEFT JOIN users scheduled_by ON si."scheduledBy" = scheduled_by.id
-      LEFT JOIN users interviewer ON si."interviewerId" = interviewer.id
-      LEFT JOIN "opportunityApplicants" oa ON si."applicantId" = oa.id
-      LEFT JOIN users applicant_user ON oa."userId" = applicant_user.id
-      LEFT JOIN opportunities o ON si."opportunityId" = o.id
       ${whereClause}
       ORDER BY si."scheduledDate" ASC, si."createdAt" DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 
-    queryParams.push(limit, offset);
-    const result = await pool.query(query, queryParams);
+    const mainQueryParams = [...queryParams, limit, offset];
+    const result = await pool.query(query, mainQueryParams);
 
     const response = NextResponse.json({
       success: true,
@@ -133,7 +119,7 @@ export async function GET(request: NextRequest) {
           applicantId: row.applicantId,
           scheduledBy: row.scheduledBy,
           interviewerId: row.interviewerId,
-          interviewerName: row.interviewerName || row.interviewerUserName,
+          interviewerName: row.interviewerName,
           scheduledDate: row.scheduledDate,
           scheduledTime: row.scheduledTime,
           modeOfInterview: row.modeOfInterview,
@@ -145,17 +131,7 @@ export async function GET(request: NextRequest) {
           interviewFeedback: row.interviewFeedback,
           rating: row.rating,
           createdAt: row.createdAt,
-          updatedAt: row.updatedAt,
-          // Additional data for frontend
-          scheduledByName: row.scheduledByName,
-          scheduledByEmail: row.scheduledByEmail,
-          interviewerUserName: row.interviewerUserName,
-          interviewerUserEmail: row.interviewerUserEmail,
-          applicantUserId: row.applicantUserId,
-          applicantName: row.applicantName,
-          applicantEmail: row.applicantEmail,
-          opportunityRole: row.opportunityRole,
-          opportunityTitle: row.opportunityTitle
+          updatedAt: row.updatedAt
         })),
         pagination: {
           total: totalCount,

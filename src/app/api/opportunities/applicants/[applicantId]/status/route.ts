@@ -9,6 +9,8 @@ import pool from '@/dbconfig/dbconfig';
 import { validateAPIRouteWithRateLimit } from '@/lib/utils';
 import { type NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { EmailNotifications } from '@/lib/emailService';
+import { getApplicantDataByApplicantId } from '@/lib/emailHelpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,6 +91,28 @@ export async function PUT(
 
     const result = await pool.query(updateQuery, [status, applicantId]);
     const updatedApplicant = result.rows[0];
+
+    // Send email notification for status changes (async, don't block response)
+    if (status === 'SHORTLISTED' || status === 'REJECTED') {
+      setImmediate(async () => {
+        try {
+          const emailData = await getApplicantDataByApplicantId(applicantId);
+          if (emailData && emailData.applicantEmail) {
+            if (status === 'SHORTLISTED') {
+              await EmailNotifications.sendShortlistedEmail(emailData);
+              console.log(`Shortlisted email sent to ${emailData.applicantEmail}`);
+            } else if (status === 'REJECTED') {
+              await EmailNotifications.sendRejectedEmail(emailData);
+              console.log(`Rejected email sent to ${emailData.applicantEmail}`);
+            }
+          } else {
+            console.error('Could not fetch email data for applicant:', applicantId);
+          }
+        } catch (emailError) {
+          console.error('Error sending status change email:', emailError);
+        }
+      });
+    }
 
     return NextResponse.json({
       success: true,

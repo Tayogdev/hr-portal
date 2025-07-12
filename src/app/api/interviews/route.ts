@@ -10,6 +10,8 @@ import pool from '@/dbconfig/dbconfig';
 import { validateAPIRouteWithRateLimit } from '@/lib/utils';
 import { type NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { EmailNotifications } from '@/lib/emailService';
+import { getApplicantDataByOpportunityAndUser } from '@/lib/emailHelpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -310,6 +312,33 @@ export async function POST(request: NextRequest) {
     ]);
 
     const newInterview = insertResult.rows[0];
+
+    // Send interview scheduled email notification (async, don't block response)
+    setImmediate(async () => {
+      try {
+        const emailData = await getApplicantDataByOpportunityAndUser(opportunityId, applicantId);
+        if (emailData && emailData.applicantEmail) {
+          const interviewEmailData = {
+            ...emailData,
+            interviewDetails: {
+              date: newInterview.scheduledDate,
+              time: newInterview.scheduledTime,
+              mode: newInterview.modeOfInterview,
+              link: newInterview.linkAddress,
+              interviewer: newInterview.interviewerName,
+              notes: newInterview.notesForCandidate
+            }
+          };
+          
+          await EmailNotifications.sendInterviewScheduledEmail(interviewEmailData);
+          console.log(`Interview scheduled email sent to ${emailData.applicantEmail} for interview on ${newInterview.scheduledDate}`);
+        } else {
+          console.error('Could not fetch email data for interview scheduling:', { opportunityId, applicantId });
+        }
+      } catch (emailError) {
+        console.error('Error sending interview scheduled email:', emailError);
+      }
+    });
 
     const response = NextResponse.json({
       success: true,

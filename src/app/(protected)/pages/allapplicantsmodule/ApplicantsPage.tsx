@@ -30,13 +30,7 @@ const statusColorMap: Record<string, string> = {
   FINAL: 'bg-green-100 text-green-700',
 };
 
-const statusDisplayMap: Record<string, string> = {
-  SHORTLISTED: 'Shortlisted',
-  PENDING: 'New',
-  REJECTED: 'Declined',
-  MAYBE: 'May Fit',
-  FINAL: 'Final',
-};
+
 
 export default function ApplicantsPage() {
   const [applicants, setApplicants] = useState<Applicant[]>([]);
@@ -82,7 +76,7 @@ export default function ApplicantsPage() {
               const applicantsData = await applicantsResponse.json();
               
               if (applicantsData.success && applicantsData.data?.applicants) {
-                const enhancedApplicants = applicantsData.data.applicants.map((applicant: any) => ({
+                const enhancedApplicants = applicantsData.data.applicants.map((applicant: Record<string, any>) => ({
                   id: applicant.id,
                   userId: applicant.userId,
                   name: applicant.name || 'Anonymous',
@@ -170,13 +164,14 @@ export default function ApplicantsPage() {
       }
 
       // Update local state
-      setApplicants(prev => 
-        prev.map(applicant => 
-          applicant.id === applicantId 
-            ? { ...applicant, status: newStatus as any }
-            : applicant
-        )
-      );
+    setApplicants(prev => 
+  prev.map(applicant => 
+    applicant.id === applicantId 
+      ? { ...applicant, status: newStatus as Applicant['status'] }
+      : applicant
+  )
+);
+
     } catch (err) {
       console.error('Error updating status:', err);
       alert('Failed to update status. Please try again.');

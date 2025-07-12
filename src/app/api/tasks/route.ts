@@ -10,6 +10,8 @@ import pool from '@/dbconfig/dbconfig';
 import { validateAPIRouteWithRateLimit } from '@/lib/utils';
 import { type NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { EmailNotifications } from '@/lib/emailService';
+import { getApplicantDataByOpportunityAndUser } from '@/lib/emailHelpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -239,6 +241,32 @@ export async function POST(request: NextRequest) {
     ]);
 
     const newTask = insertResult.rows[0];
+
+    // Send task assignment email notification (async, don't block response)
+    setImmediate(async () => {
+      try {
+        const emailData = await getApplicantDataByOpportunityAndUser(opportunityId, applicantId);
+        if (emailData && emailData.applicantEmail) {
+          const taskEmailData = {
+            ...emailData,
+            taskDetails: {
+              title: newTask.title,
+              description: newTask.description,
+              dueDate: newTask.dueDate,
+              submissionFormat: 'As specified in the task description',
+              contactEmail: 'hello@tayog.in'
+            }
+          };
+          
+          await EmailNotifications.sendTaskAssignedEmail(taskEmailData);
+          console.log(`Task assignment email sent to ${emailData.applicantEmail} for task: ${newTask.title}`);
+        } else {
+          console.error('Could not fetch email data for task assignment:', { opportunityId, applicantId });
+        }
+      } catch (emailError) {
+        console.error('Error sending task assignment email:', emailError);
+      }
+    });
 
     const response = NextResponse.json({
       success: true,

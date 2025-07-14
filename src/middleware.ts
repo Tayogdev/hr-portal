@@ -5,6 +5,7 @@ import { getToken } from 'next-auth/jwt';
 export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   const isAuth = !!token;
+  const isRegistered = token?.isRegistered === true;
 
   const path = req.nextUrl.pathname;
 
@@ -28,7 +29,23 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  if (isAuth && path === '/login') {
+  // Check if user is authenticated but not registered in database
+  if (isAuth && !isRegistered && !isPublicPage) {
+    if (path.startsWith('/api/')) {
+      return NextResponse.json(
+        { 
+          error: 'Forbidden - User not registered in system',
+          details: 'You must be registered in our system to access this resource'
+        },
+        { status: 403 }
+      );
+    }
+    // Redirect to login with error parameter
+    return NextResponse.redirect(new URL('/login?error=not_registered', req.url));
+  }
+
+  // If user is authenticated and registered, allow access to login page but redirect to dashboard
+  if (isAuth && isRegistered && path === '/login') {
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 

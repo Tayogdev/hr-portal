@@ -27,7 +27,7 @@ export async function PUT(
     }
 
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (!token?.sub) {
+    if (!token?.id) {
       return NextResponse.json({
         success: false,
         message: 'User ID not found in token',

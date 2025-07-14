@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
 
     // Get the current user from the token
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (!token?.sub) {
+    if (!token?.id) {
       return NextResponse.json({
         success: false,
         message: 'User ID not found in token',
@@ -301,7 +301,7 @@ export async function POST(request: NextRequest) {
     const insertResult = await pool.query(insertQuery, [
       opportunityId,
       applicantId,
-      token.sub, // Current user ID (scheduledBy)
+      token.id, // Current user ID (scheduledBy)
       interviewerId || null,
       interviewerName || null,
       scheduledDate,

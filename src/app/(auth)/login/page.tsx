@@ -1,23 +1,62 @@
 'use client';
 
-import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { useState, useEffect } from 'react';
+import { signIn, getSession } from 'next-auth/react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 
 export default function LoginPage() {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
   const [tayogCredential, setTayogCredential] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
-  const handleLogin = (provider: 'google') => {
+  useEffect(() => {
+    // Check for authentication errors
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      setError('You are not registered in our system. Please register first or contact support.');
+    }
+  }, [searchParams]);
+
+  const handleLogin = async (provider: 'google') => {
     setLoadingProvider(provider);
-    signIn(provider, { callbackUrl: '/' });
+    setError(null);
+    
+    try {
+      const result = await signIn(provider, { 
+        callbackUrl: '/dashboard',
+        redirect: false // Don't redirect automatically to handle errors
+      });
+      
+      if (result?.error) {
+        setError('Login failed. You may not be registered in our system.');
+      } else if (result?.ok) {
+        // Check if user is properly authenticated
+        const session = await getSession();
+        if (session?.user?.isRegistered) {
+          router.push('/dashboard');
+        } else {
+          setError('You are not registered in our system. Please register first or contact support.');
+        }
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      setLoadingProvider(null);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     console.log('Tayog Credential:', tayogCredential);
     console.log('Verification Code:', verificationCode);
+    // TODO: Implement Tayog credential authentication
+    setError('Tayog credential login is not implemented yet. Please use Google login.');
   };
 
   return (
@@ -56,6 +95,35 @@ export default function LoginPage() {
         <p className="text-center text-gray-600 text-sm sm:text-base">
           Mention your Organization credentials
         </p>
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">
+                  Access Denied
+                </h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{error}</p>
+                </div>
+                <div className="mt-3 text-sm text-red-600">
+                  <p>
+                    If you believe this is an error, please contact support at{' '}
+                    <a href="mailto:support@tayog.in" className="underline font-medium">
+                      support@tayog.in
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Google Login Button */}
         <button

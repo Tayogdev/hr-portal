@@ -7,6 +7,48 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Extract user ID from authentication token
+ * @param request - NextRequest object
+ * @returns Promise<string> - User ID from token
+ * @throws Error if user ID not found
+ */
+export async function getUserIdFromToken(request: NextRequest): Promise<string> {
+  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+  
+  if (!token?.id) {
+    throw new Error('User ID not found in authentication token');
+  }
+  
+  return token.id as string;
+}
+
+/**
+ * Validate API route and extract user ID
+ * @param request - NextRequest object
+ * @returns Promise<{ userId: string }> - Object containing user ID
+ * @throws NextResponse with error if validation fails
+ */
+export async function validateAPIRouteAndGetUserId(request: NextRequest): Promise<{ userId: string }> {
+  // Validate authentication with rate limiting
+  const authError = await validateAPIRouteWithRateLimit(request);
+  if (authError) throw authError;
+
+  try {
+    const userId = await getUserIdFromToken(request);
+    return { userId };
+  } catch {
+    throw NextResponse.json({
+      success: false,
+      message: 'User ID not found in token',
+      timestamp: new Date().toISOString(),
+      error: {
+        code: 'INVALID_TOKEN',
+        details: 'User ID is required but not found in authentication token'
+      }
+    }, { status: 401 });
+  }
+}
 
 export async function validateAPIRoute(req: NextRequest, requiredRole?: string) {
   try {

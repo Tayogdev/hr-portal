@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import {
   LayoutDashboard,
   Briefcase,
@@ -55,6 +56,7 @@ const navItems: NavItem[] = [
 export default function CustomNavbar(): React.JSX.Element {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { data: session } = useSession();
 
   return (
     <>
@@ -154,18 +156,20 @@ export default function CustomNavbar(): React.JSX.Element {
             Logout
           </button>
 
+          {/* Dynamic Username Below Logout */}
+         
+
           {/* User Profile */}
           <div className="flex items-center gap-3 p-3 mt-4 bg-gray-50 rounded-lg">
             <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
               <span className="text-sm font-semibold text-blue-700">RD</span>
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-900 truncate">
-                Ravindra Dhage
-              </div>
-              <div className="text-xs text-gray-500 truncate">
-                Interaction Designer
-              </div>
+            <div className="w-full flex flex-col items-center mt-2 mb-4">
+            <span className="text-sm font-semibold text-gray-700">
+              {session?.user?.name || 'User'}
+            </span>
+          </div>
             </div>
           </div>
         </div>

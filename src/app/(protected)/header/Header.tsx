@@ -1,14 +1,27 @@
-
-
-// components/Header.tsx
-
 'use client';
+
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Bell, Plus } from 'lucide-react';
+
+type Page = {
+  id: string;
+  title: string;
+  uName: string;
+  logo?: string;
+  type: string;
+};
 
 const routeSegmentMap: Record<string, string> = {
   'dashboard': 'Dashboard',
@@ -20,6 +33,7 @@ const routeSegmentMap: Record<string, string> = {
   'company-profile': 'Company Profile',
   'applicants': 'Applicants',
   'shortlisted': 'Shortlisted Applicants',
+  'events': 'Events',
 };
 
 export default function Header(): React.JSX.Element | null {
@@ -28,6 +42,8 @@ export default function Header(): React.JSX.Element | null {
 
   const [currentJobTitle, setCurrentJobTitle] = useState<string | null>(null);
   const [loadingJobTitle, setLoadingJobTitle] = useState<boolean>(false);
+  const [pages, setPages] = useState<Page[]>([]);
+  const [loadingPages, setLoadingPages] = useState(true);
 
   useEffect(() => {
     const jobDetailPathMatch = pathname.match(/^\/job-listing\/([^/]+)/);
@@ -36,7 +52,7 @@ export default function Header(): React.JSX.Element | null {
 
       const fetchJobTitle = async () => {
         try {
-          setLoadingJobTitle(true); // Start loading
+          setLoadingJobTitle(true);
           const res = await fetch(`/api/opportunities/${jobId}`);
           const result = await res.json();
 
@@ -49,7 +65,7 @@ export default function Header(): React.JSX.Element | null {
           console.error('Failed to fetch job title:', err);
           setCurrentJobTitle('Job Details');
         } finally {
-          setLoadingJobTitle(false); // Done loading
+          setLoadingJobTitle(false);
         }
       };
 
@@ -59,6 +75,25 @@ export default function Header(): React.JSX.Element | null {
       setLoadingJobTitle(false);
     }
   }, [pathname]);
+
+  // Fetch pages on mount
+  useEffect(() => {
+    const fetchPages = async () => {
+      try {
+        const res = await fetch('/api/pages');
+        const data = await res.json();
+        if (data.success) {
+          setPages(data.pages);
+        }
+      } catch (error) {
+        console.error('Error fetching pages:', error);
+      } finally {
+        setLoadingPages(false);
+      }
+    };
+
+    fetchPages();
+  }, []);
 
   if (status === 'loading' || !session) return null;
 
@@ -74,7 +109,7 @@ export default function Header(): React.JSX.Element | null {
       const segment = segments[i];
       currentPath += `/${segment}`;
 
-      let title = routeSegmentMap[segment] || segment;
+      let title = routeSegmentMap[segment] || decodeURIComponent(segment);
 
       const isJobDetail = segments[0] === 'job-listing' && i === 1;
 
@@ -96,8 +131,6 @@ export default function Header(): React.JSX.Element | null {
   };
 
   const breadcrumbs = generateBreadcrumbs();
-
-  // ⛔ Prevent render during loading to avoid showing job ID
   const isJobDetailPage = pathname.startsWith('/job-listing/') && pathname.split('/').length === 3;
   if (isJobDetailPage && loadingJobTitle) return null;
 
@@ -122,20 +155,69 @@ export default function Header(): React.JSX.Element | null {
         </div>
 
         <div className="flex items-center gap-4">
-          <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors" aria-label="Notifications">
-            <Bell className="w-5 h-5 text-gray-600" />
+          {/* Bell */}
+          <button className="relative p-0 rounded-full hover:bg-gray-100 transition-colors" aria-label="Notifications">
+            <div className="w-9 h-9 rounded-full border border-gray-300 flex items-center justify-center">
+              <Bell className="w-5 h-5 text-gray-600" />
+            </div>
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-white text-xs font-bold flex items-center justify-center">
               1
             </span>
           </button>
 
+          {/* Post Job */}
           {(pathname === '/dashboard' || pathname.startsWith('/job-listing')) && (
             <Link href="/job-listing/new" passHref>
-              <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                <Plus className="w-4 h-4" />
+              <button className="flex items-center gap-2 bg-white text-blue-600 border border-blue-600 px-4 py-2 rounded-full hover:bg-blue-50 transition-colors font-medium">
                 Post a New Job
+                <Plus className="w-4 h-4" />
               </button>
             </Link>
+          )}
+
+          {/* Switch Sidebar */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <button className="flex items-center gap-2 bg-white text-gray-800 border border-gray-300 px-4 py-2 rounded-full hover:bg-gray-100 transition-colors font-medium">
+                Switch
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[300px] sm:w-[350px]">
+              <SheetHeader>
+                <SheetTitle className="text-base">Switch Page</SheetTitle>
+                <SheetDescription>Choose a page to switch to:</SheetDescription>
+              </SheetHeader>
+
+              <div className="mt-4 space-y-2">
+                {loadingPages ? (
+                  <p className="text-sm text-gray-500">Loading pages...</p>
+                ) : pages.length === 0 ? (
+                  <p className="text-sm text-gray-500">No pages available.</p>
+                ) : (
+                  pages.map((page) => (
+                    <Link
+                      key={page.id}
+                      href={`/${page.uName}`}
+                      className="block bg-gray-100 px-3 py-2 rounded hover:bg-gray-200 transition"
+                    >
+                      <div className="text-sm font-medium">{page.title}</div>
+                      <div className="text-xs text-gray-500 truncate">/{page.uName}</div>
+                    </Link>
+                  ))
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {/* Post Event */}
+          {pathname === '/events' && (
+            <button
+              onClick={() => console.log('Post a new event button clicked')}
+              className="flex items-center gap-2 bg-white text-blue-600 border border-blue-600 px-4 py-2 rounded-full hover:bg-blue-50 transition-colors font-medium"
+            >
+              Post a new Event
+              <Plus className="w-4 h-4" />
+            </button>
           )}
         </div>
       </div>

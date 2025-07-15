@@ -201,102 +201,6 @@ export default function JobDetailPage() {
   const statusRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Function to fetch tasks and interviews for a specific applicant
-  const fetchApplicantTasksAndInterviews = async (applicant: ApplicantProfile) => {
-    console.log('🔍 Fetching tasks and interviews for applicant:', applicant.name, 'ID:', applicant.id);
-    const updatedApplicant = { ...applicant };
-
-    // Fetch tasks for this applicant
-    try {
-      console.log('📋 Fetching tasks...');
-      const tasksResponse = await fetch(`/api/tasks?opportunityId=${jobId}&applicantId=${applicant.id}`, {
-        credentials: 'include'
-      });
-      console.log('📋 Tasks response status:', tasksResponse.status);
-      
-      if (tasksResponse.ok) {
-        const tasksData = await tasksResponse.json();
-        console.log('📋 Tasks data:', tasksData);
-        
-        if (tasksData.success && tasksData.data.tasks.length > 0) {
-          const latestTask = tasksData.data.tasks[0]; // Get the most recent task
-          updatedApplicant.assignedTask = {
-            id: latestTask.id,
-            title: latestTask.title,
-            description: latestTask.description,
-            dueDate: latestTask.dueDate,
-          };
-          console.log('✅ Task assigned:', updatedApplicant.assignedTask);
-        } else {
-          console.log('❌ No tasks found for applicant');
-        }
-      } else {
-        console.log('❌ Tasks API call failed:', tasksResponse.status);
-      }
-    } catch (error) {
-      console.warn('❌ Failed to fetch tasks for applicant', applicant.id, error);
-    }
-
-    // Fetch interviews for this applicant
-    try {
-      console.log('🗓️ Fetching interviews...');
-      const interviewsResponse = await fetch(`/api/interviews?opportunityId=${jobId}&applicantId=${applicant.id}`, {
-        credentials: 'include'
-      });
-      console.log('🗓️ Interviews response status:', interviewsResponse.status);
-      
-      if (interviewsResponse.ok) {
-        const interviewsData = await interviewsResponse.json();
-        console.log('🗓️ Interviews data:', interviewsData);
-        
-        if (interviewsData.success && interviewsData.data.interviews.length > 0) {
-          const latestInterview = interviewsData.data.interviews[0]; // Get the most recent interview
-          updatedApplicant.scheduledInterview = {
-            id: latestInterview.id,
-            date: new Date(latestInterview.scheduledDate).toLocaleDateString('en-US', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            }),
-            time: latestInterview.scheduledTime,
-            interviewer: latestInterview.interviewerName || 'TBD',
-            mode: latestInterview.modeOfInterview,
-            link: latestInterview.linkAddress,
-            notes: latestInterview.notesForCandidate,
-          };
-          console.log('✅ Interview assigned:', updatedApplicant.scheduledInterview);
-        } else {
-          console.log('❌ No interviews found for applicant');
-        }
-      } else {
-        console.log('❌ Interviews API call failed:', interviewsResponse.status);
-      }
-    } catch (error) {
-      console.warn('❌ Failed to fetch interviews for applicant', applicant.id, error);
-    }
-
-    console.log('🔄 Final updated applicant:', updatedApplicant);
-    return updatedApplicant;
-  };
-
-  // Enhanced applicant selection handler
-  const handleApplicantSelection = async (applicant: ApplicantProfile) => {
-    console.log('👤 Applicant selected:', applicant.name, 'Current task:', applicant.assignedTask, 'Current interview:', applicant.scheduledInterview);
-    
-    // Always fetch the latest tasks and interviews to ensure data is current
-    const updatedApplicant = await fetchApplicantTasksAndInterviews(applicant);
-    
-    // Update the applicant in the state
-    setApplicants(prevApplicants =>
-      prevApplicants.map(app => (app.id === updatedApplicant.id ? updatedApplicant : app))
-    );
-    
-    console.log('✅ Setting selected applicant with updated data:', updatedApplicant);
-    setSelectedApplicant(updatedApplicant);
-    setActiveSection("none");
-  };
-
   // Fetch applicants data
   useEffect(() => {
     const fetchApplicantsData = async () => {
@@ -857,8 +761,9 @@ export default function JobDetailPage() {
               <div
                 key={applicant.id}
                 onClick={() => {
-                  handleApplicantSelection(applicant);
-                }}
+                  setSelectedApplicant(applicant);
+                    setActiveSection("none");
+                  }}
                   className={`flex gap-4 cursor-pointer p-4 border-l-4 rounded-r-lg mb-3 transition-all ${
                     isSelected 
                       ? "border-blue-500 bg-blue-50 shadow-sm" 
@@ -979,7 +884,7 @@ export default function JobDetailPage() {
   Maybe
 </button>
 
-                        </div>
+      </div>
                       )}
                     </div>
 
@@ -1008,91 +913,89 @@ export default function JobDetailPage() {
 
    {/* Task and Interview buttons for shortlisted */}
 {selectedTab === "shortlisted" && selectedApplicant && (
-  <div className="flex justify-end gap-2 mt-8">
-    {/* View or Assign Task Button */}
-    {selectedApplicant.assignedTask ? (
-      <button
-        className="rounded-full px-4 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100"
-        onClick={handleViewTaskDetails}
-      >
-        View Task
-      </button>
-    ) : (
-      <button
-        className="rounded-full px-4 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100 flex items-center gap-1"
-        onClick={handleAssignNewTask}
-      >
-        Assign Task <span className="ml-1 text-base">+</span>
-      </button>
-    )}
-
-    {/* Schedule or View Interview Button */}
-    {selectedApplicant.scheduledInterview ? (
-      <button
-        className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700 flex items-center gap-1"
-        onClick={handleViewInterviewDetails}
-      >
-        Interview Scheduled <span className="ml-1 text-base">🗓️</span>
-      </button>
-    ) : (
-      <button
-        className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700 flex items-center gap-1"
-        onClick={handleScheduleNewInterview}
-      >
-        Schedule Interview <span className="ml-1 text-base">🗓️</span>
-      </button>
-    )}
-
-    {/* ✅ Show Edit button only if at least one action is available */}
-    {(selectedApplicant.assignedTask || selectedApplicant.scheduledInterview) && (
-      <div className="relative" ref={menuRef}>
+  <div className="mt-6 bg-white shadow-md rounded-lg p-4">
+    <div className="flex justify-end flex-wrap gap-2">
+      {/* View or Assign Task Button */}
+      {selectedApplicant.assignedTask ? (
         <button
-          className="rounded-full p-2 border border-gray-300 text-gray-700 hover:bg-gray-100"
-          onClick={() => {
-            console.log('Edit menu clicked, current state:', menuOpen);
-            setMenuOpen(prev => !prev);
-          }}
-          title="Edit Options"
+          className="rounded-full px-4 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100"
+          onClick={handleViewTaskDetails}
         >
-          <Pencil className="w-4 h-4" />
+          View Task
         </button>
-        {menuOpen && (
-          <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow z-50">
-            {selectedApplicant.assignedTask && (
-              <button
-                className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                onClick={(e) => {
-                  console.log('Edit task clicked');
-                  e.stopPropagation();
-                  handleEditTask();
-                }}
-              >
-                ✏️ Edit Assigned Task
-              </button>
-            )}
-            {selectedApplicant.scheduledInterview && (
-              <button
-                className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                onClick={(e) => {
-                  console.log('Edit interview clicked');
-                  e.stopPropagation();
-                  handleEditInterview();
-                }}
-              >
-                📅 Edit Scheduled Interview
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    )}
+      ) : (
+        <button
+          className="rounded-full px-4 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100 flex items-center gap-1"
+          onClick={handleAssignNewTask}
+        >
+          Assign Task <span className="ml-1 text-base">+</span>
+        </button>
+      )}
+
+      {/* Schedule or View Interview Button */}
+      {selectedApplicant.scheduledInterview ? (
+        <button
+          className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700 flex items-center gap-1"
+          onClick={handleViewInterviewDetails}
+        >
+          Interview Scheduled <span className="ml-1 text-base">🗓️</span>
+        </button>
+      ) : (
+        <button
+          className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700 flex items-center gap-1"
+          onClick={handleScheduleNewInterview}
+        >
+          Schedule Interview <span className="ml-1 text-base">🗓️</span>
+        </button>
+      )}
+
+      {/* Edit Dropdown */}
+      {(selectedApplicant.assignedTask || selectedApplicant.scheduledInterview) && (
+        <div className="relative" ref={menuRef}>
+          <button
+            className="rounded-full p-2 border border-gray-300 text-gray-700 hover:bg-gray-100"
+            onClick={() => setMenuOpen(prev => !prev)}
+            title="Edit Options"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow z-50">
+              {selectedApplicant.assignedTask && (
+                <button
+                  className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditTask();
+                  }}
+                >
+                  ✏️ Edit Assigned Task
+                </button>
+              )}
+              {selectedApplicant.scheduledInterview && (
+                <button
+                  className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditInterview();
+                  }}
+                >
+                  📅 Edit Scheduled Interview
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   </div>
 )}
 
+
               {/* Content sections */}
               {activeSection === "profile" && (
-                <div className="mt-6">
-                  <h4 className="text-md font-semibold mb-4">Profile Summary</h4>
+               <div className="mt-6 bg-white shadow-md rounded-xl p-6">
+    <h4 className="text-md font-semibold mb-4">Profile Summary</h4>
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                     <div>
                       <span className="font-medium text-gray-700">Name:</span>
@@ -1197,181 +1100,146 @@ export default function JobDetailPage() {
               )}
 
               {activeSection === "files" && (
-                <div className="mt-6 bg-gray-50 border rounded-md p-4">
-                  <h4 className="text-md font-semibold mb-3">Documents</h4>
-                  {selectedApplicant.documents?.summary ? (
-                    <div className="space-y-2">
-                      {Object.entries(selectedApplicant.documents.summary).map(([docType, docUrl]) => {
-                        if (!docUrl) return null;
-                        
-                        const docTypeLabels: Record<string, string> = {
-                          cv: 'Resume/CV',
-                          portfolio: 'Portfolio',
-                          sops: 'Statement of Purpose',
-                          lor: 'Letter of Recommendation',
-                          researchProposal: 'Research Proposal',
-                          coverLetter: 'Cover Letter'
-                        };
-                        
-                        // Check if the URL is valid (starts with http/https or is a data URL)
-                        const isValidUrl = docUrl.startsWith('http://') || docUrl.startsWith('https://') || docUrl.startsWith('data:');
-                        
-                        if (isValidUrl) {
-                          return (
-                            <a
-                              key={docType}
-                              href={docUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center justify-between p-3 bg-white rounded border hover:bg-gray-50 transition-colors"
-                            >
-                              <span className="text-indigo-600 font-medium">
-                                {docTypeLabels[docType] || docType}
-                              </span>
-                              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                              </svg>
-                            </a>
-                          );
-                        } else {
-                          // For invalid URLs, show a disabled link with a message
-                          return (
-                            <div
-                              key={docType}
-                              className="flex items-center justify-between p-3 bg-gray-100 rounded border opacity-50"
-                              title={`Invalid document URL: ${docUrl}`}
-                            >
-                              <span className="text-gray-600 font-medium">
-                                {docTypeLabels[docType] || docType} (Invalid URL)
-                              </span>
-                              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
-                              </svg>
-                            </div>
-                          );
-                        }
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-gray-500">No documents available for this applicant.</p>
-                  )}
-                </div>
-              )}
+  <div className="mt-6 bg-white shadow-lg border rounded-xl p-6">
+    <h4 className="text-md font-semibold mb-4">Documents</h4>
+    {selectedApplicant.documents?.summary ? (
+      <div className="space-y-3">
+        {Object.entries(selectedApplicant.documents.summary).map(([docType, docUrl]) => {
+          if (!docUrl) return null;
 
-              {activeSection === "contact" && (
-                <div id="contact-info" className="mt-6">
-                  <h4 className="text-md font-semibold mb-4">Contact Information</h4>
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8m-18 8h18a2 2 0 002-2V6a2 2 0 00-2-2H3a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                      <div>
-                        <span className="font-medium text-gray-700">Email:</span>
-                        <span className="ml-2 text-gray-900">{selectedApplicant.email}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      <div>
-                        <span className="font-medium text-gray-700">User ID:</span>
-                        <span className="ml-2 text-gray-900 font-mono text-sm">{selectedApplicant.userId}</span>
-                      </div>
-                    </div>
-                    {selectedApplicant.image && (
-                      <div className="flex items-center gap-3">
-                        <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <div>
-                          <span className="font-medium text-gray-700">Profile Image:</span>
-                          {(() => {
-                            const imageUrl = selectedApplicant.image;
-                            const isValidUrl = imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:');
-                            
-                            if (isValidUrl) {
-                              return (
-                                <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-600 hover:underline">
-                                  View Image
-                                </a>
-                              );
-                            } else {
-                              return (
-                                <span className="ml-2 text-gray-500" title={`Invalid image URL: ${imageUrl}`}>
-                                  Invalid URL
-                                </span>
-                              );
-                            }
-                          })()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+          const docTypeLabels: Record<string, string> = {
+            cv: 'Resume/CV',
+            portfolio: 'Portfolio',
+            sops: 'Statement of Purpose',
+            lor: 'Letter of Recommendation',
+            researchProposal: 'Research Proposal',
+            coverLetter: 'Cover Letter'
+          };
 
-              {activeSection === "taskDetails" && selectedApplicant?.assignedTask && (
-                <div className="mt-6 p-4 border rounded-md bg-blue-50">
-                  <h4 className="text-md font-semibold mb-2 text-blue-800">Assigned Task Details</h4>
-                  <p className="text-gray-800">
-                    <span className="font-medium">Task Title:</span> {selectedApplicant.assignedTask.title}
-                  </p>
-                  <p className="text-gray-800 mt-1">
-                    <span className="font-medium">Description:</span> {selectedApplicant.assignedTask.description}
-                  </p>
-                  <p className="text-gray-800 mt-1">
-                    <span className="font-medium">Due Date:</span> {selectedApplicant.assignedTask.dueDate}
-                  </p>
-                </div>
-              )}
+          const isValidUrl =
+            docUrl.startsWith('http://') ||
+            docUrl.startsWith('https://') ||
+            docUrl.startsWith('data:');
 
-              {activeSection === "interviewDetails" && selectedApplicant?.scheduledInterview && (
-                <div className="mt-6 p-4 border rounded-md bg-green-50">
-                  <h4 className="text-md font-semibold mb-2 text-green-800">Interview Details</h4>
-                  <p className="text-gray-800">
-                    <span className="font-medium">Date:</span> {selectedApplicant.scheduledInterview.date}
-                  </p>
-                  <p className="text-gray-800 mt-1">
-                    <span className="font-medium">Time:</span> {selectedApplicant.scheduledInterview.time}
-                  </p>
-                  <p className="text-gray-800 mt-1">
-                    <span className="font-medium">Interviewer:</span> {selectedApplicant.scheduledInterview.interviewer}
-                  </p>
-                  <p className="text-gray-800 mt-1">
-                    <span className="font-medium">Mode:</span> {selectedApplicant.scheduledInterview.mode}
-                  </p>
-                  {selectedApplicant.scheduledInterview.link && (
-                    <p className="text-gray-800 mt-1">
-                      <span className="font-medium">Link:</span> 
-                      {(() => {
-                        const linkUrl = selectedApplicant.scheduledInterview.link;
-                        const isValidUrl = linkUrl.startsWith('http://') || linkUrl.startsWith('https://');
-                        
-                        if (isValidUrl) {
-                          return (
-                            <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-1">
-                              {linkUrl}
-                            </a>
-                          );
-                        } else {
-                          return (
-                            <span className="ml-1 text-gray-500" title={`Invalid link URL: ${linkUrl}`}>
-                              {linkUrl} (Invalid URL)
-                            </span>
-                          );
-                        }
-                      })()}
-                    </p>
-                  )}
-                  {selectedApplicant.scheduledInterview.notes && (
-                    <p className="text-gray-800 mt-1">
-                      <span className="font-medium">Notes:</span> {selectedApplicant.scheduledInterview.notes}
-                    </p>
-                  )}
-                </div>
-              )}
+          if (isValidUrl) {
+            return (
+              <a
+                key={docType}
+                href={docUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3 bg-gray-50 border rounded hover:bg-gray-100 transition-colors"
+              >
+                <span className="text-indigo-600 font-medium">
+                  {docTypeLabels[docType] || docType}
+                </span>
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            );
+          } else {
+            return (
+              <div
+                key={docType}
+                className="flex items-center justify-between p-3 bg-gray-100 rounded border opacity-50"
+                title={`Invalid document URL: ${docUrl}`}
+              >
+                <span className="text-gray-600 font-medium">
+                  {docTypeLabels[docType] || docType} (Invalid URL)
+                </span>
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+            );
+          }
+        })}
+      </div>
+    ) : (
+      <p className="text-gray-500">No documents available for this applicant.</p>
+    )}
+  </div>
+)}
+
+{activeSection === "contact" && (
+  <div id="contact-info" className="mt-6 bg-white shadow-lg border rounded-xl p-6">
+    <h4 className="text-md font-semibold mb-4">Contact Information</h4>
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <span className="font-medium text-gray-700">Email:</span>
+        <span className="text-gray-900">{selectedApplicant.email}</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="font-medium text-gray-700">User ID:</span>
+        <span className="text-gray-900 font-mono text-sm">{selectedApplicant.userId}</span>
+      </div>
+      {selectedApplicant.image && (
+        <div className="flex items-center gap-3">
+          <span className="font-medium text-gray-700">Profile Image:</span>
+          {(() => {
+            const imageUrl = selectedApplicant.image;
+            const isValidUrl = imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:');
+            return isValidUrl ? (
+              <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                View Image
+              </a>
+            ) : (
+              <span className="text-gray-500" title={`Invalid image URL: ${imageUrl}`}>Invalid URL</span>
+            );
+          })()}
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
+
+           {activeSection === "taskDetails" && selectedApplicant?.assignedTask && (
+  <div className="mt-6 bg-white shadow-lg border rounded-xl p-6">
+    <h4 className="text-md font-semibold mb-4 text-blue-800">Assigned Task Details</h4>
+    <div className="space-y-2 text-gray-800">
+      <p><span className="font-medium">Task Title:</span> {selectedApplicant.assignedTask.title}</p>
+      <p><span className="font-medium">Description:</span> {selectedApplicant.assignedTask.description}</p>
+      <p><span className="font-medium">Due Date:</span> {selectedApplicant.assignedTask.dueDate}</p>
+    </div>
+  </div>
+)}
+
+
+          {activeSection === "interviewDetails" && selectedApplicant?.scheduledInterview && (
+  <div className="mt-6 bg-white shadow-lg border rounded-xl p-6">
+    <h4 className="text-md font-semibold mb-4 text-green-800">Interview Details</h4>
+    <div className="space-y-2 text-gray-800">
+      <p><span className="font-medium">Date:</span> {selectedApplicant.scheduledInterview.date}</p>
+      <p><span className="font-medium">Time:</span> {selectedApplicant.scheduledInterview.time}</p>
+      <p><span className="font-medium">Interviewer:</span> {selectedApplicant.scheduledInterview.interviewer}</p>
+      <p><span className="font-medium">Mode:</span> {selectedApplicant.scheduledInterview.mode}</p>
+      {selectedApplicant.scheduledInterview.link && (
+        <p>
+          <span className="font-medium">Link:</span>{' '}
+          {(() => {
+            const linkUrl = selectedApplicant.scheduledInterview.link;
+            const isValidUrl = linkUrl.startsWith('http://') || linkUrl.startsWith('https://');
+            return isValidUrl ? (
+              <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-1">
+                {linkUrl}
+              </a>
+            ) : (
+              <span className="ml-1 text-gray-500" title={`Invalid link URL: ${linkUrl}`}>
+                {linkUrl} (Invalid URL)
+              </span>
+            );
+          })()}
+        </p>
+      )}
+      {selectedApplicant.scheduledInterview.notes && (
+        <p><span className="font-medium">Notes:</span> {selectedApplicant.scheduledInterview.notes}</p>
+      )}
+    </div>
+  </div>
+)}
+
 
             </>
           ) : (

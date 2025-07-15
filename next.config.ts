@@ -14,6 +14,11 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'www.svgrepo.com',
       },
+      // Add this new pattern for googleusercontent.com
+      {
+        protocol: 'http', // Use http as specified in your error message
+        hostname: 'googleusercontent.com',
+      },
     ],
   },
   experimental: {

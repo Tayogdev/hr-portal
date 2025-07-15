@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { signIn, getSession } from 'next-auth/react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
 export default function LoginPage() {
@@ -10,40 +10,36 @@ export default function LoginPage() {
   const [tayogCredential, setTayogCredential] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [error, setError] = useState<string | null>(null);
-  
-  const searchParams = useSearchParams();
   const router = useRouter();
-
-  useEffect(() => {
-    // Check for authentication errors
-    const errorParam = searchParams.get('error');
-    if (errorParam) {
-      setError('You are not registered in our system. Please register first or contact support.');
-    }
-  }, [searchParams]);
 
   const handleLogin = async (provider: 'google') => {
     setLoadingProvider(provider);
     setError(null);
-    
+
     try {
-      const result = await signIn(provider, { 
+      const result = await signIn(provider, {
         callbackUrl: '/dashboard',
-        redirect: false // Don't redirect automatically to handle errors
+        redirect: false,
       });
-      
+
       if (result?.error) {
-        setError('Login failed. You may not be registered in our system.');
-      } else if (result?.ok) {
-        // Check if user is properly authenticated
-        const session = await getSession();
-        if (session?.user?.isRegistered) {
-          router.push('/dashboard');
-        } else {
-          setError('You are not registered in our system. Please register first or contact support.');
-        }
+        console.error("signIn error:", result.error);
+        setError('Please register on tayog.in and create pages.');
+        return;
+      }
+
+      // Add small delay to allow session to stabilize
+      await new Promise(res => setTimeout(res, 300));
+
+      const session = await getSession();
+
+      if (session && session.user?.isRegistered) {
+        router.push('/dashboard');
+      } else {
+        setError('Please register on tayog.in and create pages.');
       }
     } catch (err) {
+      console.error("Unexpected error during login:", err);
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoadingProvider(null);
@@ -55,17 +51,14 @@ export default function LoginPage() {
     setError(null);
     console.log('Tayog Credential:', tayogCredential);
     console.log('Verification Code:', verificationCode);
-    // TODO: Implement Tayog credential authentication
     setError('Tayog credential login is not implemented yet. Please use Google login.');
   };
 
   return (
-    <div
-      className="relative min-h-screen flex items-center justify-center bg-white overflow-hidden p-4"
-    >
+    <div className="relative min-h-screen flex items-center justify-center bg-white overflow-hidden p-4">
       {/* Background Image */}
       <Image
-        src="/login-bg.png" // Place this in the /public folder
+        src="/login-bg.png"
         alt="Login Background"
         layout="fill"
         objectFit="cover"
@@ -106,9 +99,7 @@ export default function LoginPage() {
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">
-                  Access Denied
-                </h3>
+                <h3 className="text-sm font-medium text-red-800">Access Denied</h3>
                 <div className="mt-2 text-sm text-red-700">
                   <p>{error}</p>
                 </div>

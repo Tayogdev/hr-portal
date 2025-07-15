@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         success: false,
         message: `User account is ${user.accountStatus === 1 ? 'suspended' : 'inactive'}`,
         registered: true,
-        accountActive: false,
+        accountActive: false, 
         timestamp: new Date().toISOString(),
       }, { status: 403 });
     }

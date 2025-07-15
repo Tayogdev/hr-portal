@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
+
+
 import {
   LayoutDashboard,
   Briefcase,
@@ -17,6 +19,7 @@ import {
   Settings,
   HelpCircle,
   LogOut,
+  Ticket,
 } from 'lucide-react';
 
 type NavItem = {
@@ -37,13 +40,18 @@ const navItems: NavItem[] = [
     icon: <Briefcase className="w-5 h-5" />,
   },
   {
+    name: 'Events',
+    href: '/events',
+    icon: <Ticket className="w-5 h-5" />, 
+  },
+  {
     name: 'All applicants',
     href: '/all-applicants',
     icon: <Users className="w-5 h-5" />,
   },
   {
-    name: 'Company profile',
-    href: '/company-profile',
+    name: 'Organization',
+    href: '/organization',
     icon: <Building2 className="w-5 h-5" />,
   },
   {
@@ -53,10 +61,13 @@ const navItems: NavItem[] = [
   },
 ];
 
+
 export default function CustomNavbar(): React.JSX.Element {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { data: session } = useSession();
+
+    const { data: session } = useSession(); // ✅ PLACE HERE
+
 
   return (
     <>
@@ -160,19 +171,25 @@ export default function CustomNavbar(): React.JSX.Element {
          
 
           {/* User Profile */}
-          <div className="flex items-center gap-3 p-3 mt-4 bg-gray-50 rounded-lg">
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-sm font-semibold text-blue-700">RD</span>
-            </div>
-            <div className="flex-1 min-w-0">
-            <div className="w-full flex flex-col items-center mt-2 mb-4">
-            <span className="text-sm font-semibold text-gray-700">
-              {session?.user?.name || 'User'}
+         {session?.user && (
+        <div className="flex items-center gap-3 p-3 mt-4 bg-gray-50 rounded-lg">
+          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+            <span className="text-sm font-semibold text-blue-700">
+              {session.user.name?.charAt(0).toUpperCase()}
             </span>
           </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-gray-900 truncate">
+             {session?.user?.name || 'User'}
+            </div>
+            <div className="text-xs text-gray-500 truncate">
+              {session.user.email}
             </div>
           </div>
         </div>
+      )}
+        </div>
+        
       </aside>
     </>
   );

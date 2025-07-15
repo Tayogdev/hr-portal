@@ -1,11 +1,10 @@
-// src/lib/authOptions.ts
 import GoogleProvider from "next-auth/providers/google";
 import LinkedInProvider from "next-auth/providers/linkedin";
-import { NextAuthOptions } from "next-auth";
-
+import { NextAuthOptions, Session, User } from "next-auth";
+import { JWT } from "next-auth/jwt";
 import pool from "@/dbconfig/dbconfig";
 
-// Extend the default session type
+// 1. Extend session and JWT types
 declare module "next-auth" {
   interface Session {
     user: {
@@ -16,12 +15,14 @@ declare module "next-auth" {
       isRegistered?: boolean;
     };
   }
+
   interface JWT {
     id?: string;
     isRegistered?: boolean;
   }
 }
 
+// 2. Auth config
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -33,120 +34,85 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.LINKEDIN_CLIENT_SECRET!,
     }),
   ],
+
   secret: process.env.NEXTAUTH_SECRET,
+
   pages: {
     signIn: "/login",
-    error: "/login", // Redirect to login page on error
+    error: "/login",
   },
 
-  // Optimize session and JWT handling to reduce memory usage
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60,
   },
+
   jwt: {
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60,
   },
-  // Disable debug mode in production to reduce memory usage
+
   debug: process.env.NODE_ENV === "development",
-  // Optimize callbacks to prevent memory leaks and ensure user exists in database
+
   callbacks: {
+    // 3. Check if user exists (no insert — just verify)
     async signIn({ user }) {
-      if (!user.email) {
-        console.log('Sign in failed: No email provided');
-        return false;
-      }
+      if (!user.email) return false;
 
       try {
-        // Check if user exists in database by email
-        const checkUserQuery = `
-          SELECT id, name, email, image, "isDeleted", "accountStatus", "userVerified"
-          FROM users 
-          WHERE email = $1 AND ("isDeleted" = false OR "isDeleted" IS NULL)
-        `;
-        
-        const result = await pool.query(checkUserQuery, [user.email]);
-        
-        if (result.rows.length === 0) {
-          console.log(`Sign in failed: User with email ${user.email} not found in database`);
-          return false; // User not registered, deny access
+        const res = await pool.query(
+          `SELECT id, "accountStatus" FROM users WHERE email = $1 AND ("isDeleted" = false OR "isDeleted" IS NULL)`,
+          [user.email]
+        );
+
+        if (res.rows.length === 0) {
+          console.log(`❌ Email not registered in Tayog: ${user.email}`);
+          return false;
         }
 
-        const dbUser = result.rows[0];
-
-        // Check if user account is active
+        const dbUser = res.rows[0];
         if (dbUser.accountStatus !== 0) {
-          console.log(`Sign in failed: User account status is ${dbUser.accountStatus}`);
-          return false; // Account is suspended or inactive
+          console.log(`❌ Inactive account: ${user.email}`);
+          return false;
         }
 
-        // Optionally check if user is verified (uncomment if needed)
-        // if (!dbUser.userVerified) {
-        //   console.log(`Sign in failed: User email ${user.email} is not verified`);
-        //   return false;
-        // }
-
-        console.log(`Sign in successful: User ${user.email} found in database`);
-        return true; // User exists and is valid, allow sign in
-
-      } catch (dbError) {
-        console.error('Database error during sign in:', dbError);
-        return false; // Database error, deny access for security
+        return true;
+      } catch (err) {
+        console.error("❌ Error during signIn:", err);
+        return false;
       }
     },
 
+    // 4. JWT: Inject correct ID and isRegistered
     async jwt({ token, user }) {
-      if (user) {
+      if (user?.email) {
         try {
-          // Get user data from database using email
-          const getUserQuery = `
-            SELECT id, name, email, image, "userVerified", "accountStatus"
-            FROM users 
-            WHERE email = $1 AND ("isDeleted" = false OR "isDeleted" IS NULL)
-          `;
-          
-          const result = await pool.query(getUserQuery, [user.email]);
-          
-          if (result.rows.length > 0) {
-            const dbUser = result.rows[0];
-            
-            // Always use the database user ID - this is the correct approach
-            token.id = dbUser.id;
+          const res = await pool.query(
+            `SELECT id FROM users WHERE email = $1 AND ("isDeleted" = false OR "isDeleted" IS NULL)`,
+            [user.email]
+          );
+
+          if (res.rows.length > 0) {
+            token.id = res.rows[0].id; // ✅ Inject your Tayog user ID here
             token.isRegistered = true;
-            
-            // Update user's OAuth information if needed
-            const updateUserQuery = `
-              UPDATE users 
-              SET 
-                name = COALESCE($1, name),
-                image = COALESCE($2, image)
-              WHERE id = $3
-            `;
-            
-            await pool.query(updateUserQuery, [
-              user.name || dbUser.name,
-              user.image || dbUser.image,
-              dbUser.id
-            ]);
-            
-            console.log(`JWT updated for user: ${user.email} with ID: ${token.id}`);
           } else {
             token.isRegistered = false;
-            console.log(`JWT creation failed: User ${user.email} not found`);
           }
-        } catch (dbError) {
-          console.error('Error updating user data:', dbError);
+        } catch (err) {
+          console.error("❌ JWT Error:", err);
           token.isRegistered = false;
         }
       }
+
       return token;
     },
 
+    // 5. Session: Inject same ID from JWT into session
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.isRegistered = token.isRegistered as boolean;
       }
+
       return session;
     },
   },

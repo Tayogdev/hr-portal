@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import pool from '@/dbconfig/dbconfig';
 import { validateAPIRouteAndGetUserId } from '@/lib/utils';
 import { type NextRequest } from 'next/server';
-import { getToken } from 'next-auth/jwt';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -40,17 +39,12 @@ export async function GET(request: NextRequest) {
     // Validate authentication and get user ID
     const { userId } = await validateAPIRouteAndGetUserId(request);
 
-    // Debug logging
-    console.log('🔍 Debug: User ID from token:', userId);
-    console.log('🔍 Debug: Token info:', {
-      id: userId,
-      email: (await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET }))?.email,
-      isRegistered: (await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET }))?.isRegistered
-    });
+
 
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const pageId = searchParams.get('pageId'); // Get the specific page ID to filter by
     const offset = (page - 1) * limit;
 
     // Validate pagination parameters
@@ -82,21 +76,17 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Step 1: Find all publishedBy (page IDs) for this user
-    const pageIdQuery = `
-      SELECT DISTINCT "publishedBy"
-      FROM opportunities
-      WHERE "createdByUser" = $1
-    `;
-    const pageIdResult = await pool.query(pageIdQuery, [userId]);
-    const pageIds = pageIdResult.rows.map(row => row.publishedBy);
-    console.log('🔍 Debug: Page IDs (publishedBy) for user:', userId, pageIds);
-
-    if (pageIds.length === 0) {
-      // No pages, return empty result
+    // Step 1: Determine which page IDs to filter by
+    let pageIds: string[];
+    
+    if (pageId) {
+      // If a specific pageId is provided, use only that page
+      pageIds = [pageId];
+    } else {
+      // If no pageId provided, return empty results to prompt user to select a page
       return NextResponse.json({
         success: true,
-        message: 'No opportunities found for user',
+        message: 'Please select a page to view opportunities',
         timestamp: new Date().toISOString(),
         data: {
           opportunities: [],
@@ -110,34 +100,45 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Step 2: Get total count for these page IDs
-    const countQuery = `
-      SELECT COUNT(*)
-      FROM opportunities o
-      WHERE o."publishedBy" = ANY($1)
-    `;
-    const countResult = await pool.query(countQuery, [pageIds]);
-    const totalCount = parseInt(countResult.rows[0].count, 10);
-    console.log('🔍 Debug: Count query executed with pageIds:', pageIds, 'Result:', totalCount);
+    if (pageIds.length === 0) {
+      // No pages, return empty result
+      return NextResponse.json({
+        success: true,
+        message: pageId ? 'No opportunities found for this page' : 'No opportunities found for user',
+        timestamp: new Date().toISOString(),
+        data: {
+          opportunities: [],
+          pagination: {
+            total: 0,
+            page,
+            totalPages: 0,
+            hasMore: false,
+          }
+        }
+      });
+    }
 
-    // Step 3: Fetch paginated opportunities for these page IDs
+    // Step 2: Get total count and fetch opportunities in one optimized query
+    // Simplified access control - just check if opportunities exist for this page
+
+    // Now fetch opportunities for the page (relaxed the createdByUser constraint)
     const query = `
       SELECT
         o.*,
-        COUNT(DISTINCT oa.id) as applicant_count
+        COUNT(DISTINCT oa.id) as applicant_count,
+        COUNT(*) OVER() as total_count
       FROM opportunities o
       LEFT JOIN "opportunityApplicants" oa ON o.id = oa."opportunityId"
-      WHERE o."publishedBy" = ANY($1)
+      WHERE o."publishedBy" = $1
       GROUP BY o.id
       ORDER BY o."createdAt" DESC
       LIMIT $2 OFFSET $3
     `;
-    const result = await pool.query<OpportunityQueryResult>(query, [pageIds, limit, offset]);
+    const result = await pool.query<OpportunityQueryResult & { total_count: string }>(query, [pageId, limit, offset]);
     const opportunities = result.rows;
-    console.log('🔍 Debug: Main query returned opportunities:', opportunities.length, 'IDs:', opportunities.map(o => o.id));
-    if (opportunities.length > 0) {
-      console.log('🔍 Debug: First opportunity publishedBy:', opportunities[0].publishedBy, 'Type:', typeof opportunities[0].publishedBy);
-    }
+    const totalCount = opportunities.length > 0 ? parseInt(opportunities[0].total_count, 10) : 0;
+
+
 
     const formattedOpportunities: FormattedOpportunity[] = opportunities.map((opp) => ({
       id: opp.id,
@@ -153,7 +154,7 @@ export async function GET(request: NextRequest) {
     }));
 
     // Return the response structure that the frontend expects
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: 'Successfully retrieved opportunities',
       timestamp: new Date().toISOString(),
@@ -167,6 +168,10 @@ export async function GET(request: NextRequest) {
         }
       }
     });
+
+    // Add caching headers for better performance
+    response.headers.set('Cache-Control', 'private, max-age=60'); // Cache for 1 minute
+    return response;
   } catch (error) {
     // If it's already a NextResponse, return it
     if (error instanceof NextResponse) {

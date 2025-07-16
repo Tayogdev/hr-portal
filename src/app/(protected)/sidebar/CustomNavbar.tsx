@@ -2,11 +2,10 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
-
+import { useLoading } from '@/components/LoadingProvider';
 
 import {
   LayoutDashboard,
@@ -20,6 +19,7 @@ import {
   HelpCircle,
   LogOut,
   Ticket,
+  Loader2,
 } from 'lucide-react';
 
 type NavItem = {
@@ -61,13 +61,24 @@ const navItems: NavItem[] = [
   },
 ];
 
-
 export default function CustomNavbar(): React.JSX.Element {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [clickedItem, setClickedItem] = useState<string | null>(null);
+  const { data: session } = useSession();
+  const { isLoading } = useLoading();
 
-    const { data: session } = useSession(); // ✅ PLACE HERE
-
+  const handleNavigation = (href: string, name: string) => {
+    setClickedItem(name);
+    setSidebarOpen(false);
+    
+    // Add a small delay to show loading state
+    setTimeout(() => {
+      router.push(href);
+      setClickedItem(null);
+    }, 100);
+  };
 
   return (
     <>
@@ -119,26 +130,37 @@ export default function CustomNavbar(): React.JSX.Element {
           <div className="space-y-1 px-3">
             {navItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              const isClicked = clickedItem === item.name;
+              const showLoading = isClicked || (isLoading && isActive);
+              
               return (
-                <Link
+                <button
                   key={item.name}
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={() => handleNavigation(item.href, item.name)}
+                  disabled={showLoading}
                   className={`
-                    flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg
+                    w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg
                     transition-all duration-200 group
-                   ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-700' // Removed border-r-2 and border-blue-700
-                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                  }
+                    ${
+                      isActive
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                    }
+                    ${showLoading ? 'cursor-not-allowed opacity-75' : ''}
                   `}
                 >
                   <span className={`${isActive ? 'text-blue-700' : 'text-gray-500 group-hover:text-gray-700'}`}>
-                    {item.icon}
+                    {showLoading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      item.icon
+                    )}
                   </span>
-                  {item.name}
-                </Link>
+                  <span className="flex-1 text-left">{item.name}</span>
+                  {showLoading && (
+                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                  )}
+                </button>
               );
             })}
           </div>
@@ -167,29 +189,25 @@ export default function CustomNavbar(): React.JSX.Element {
             Logout
           </button>
 
-          {/* Dynamic Username Below Logout */}
-         
-
           {/* User Profile */}
-         {session?.user && (
-        <div className="flex items-center gap-3 p-3 mt-4 bg-gray-50 rounded-lg">
-          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-            <span className="text-sm font-semibold text-blue-700">
-              {session.user.name?.charAt(0).toUpperCase()}
-            </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-gray-900 truncate">
-             {session?.user?.name || 'User'}
+          {session?.user && (
+            <div className="flex items-center gap-3 p-3 mt-4 bg-gray-50 rounded-lg">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-sm font-semibold text-blue-700">
+                  {session.user.name?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900 truncate">
+                  {session?.user?.name || 'User'}
+                </div>
+                <div className="text-xs text-gray-500 truncate">
+                  {session.user.email}
+                </div>
+              </div>
             </div>
-            <div className="text-xs text-gray-500 truncate">
-              {session.user.email}
-            </div>
-          </div>
+          )}
         </div>
-      )}
-        </div>
-        
       </aside>
     </>
   );

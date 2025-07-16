@@ -10,18 +10,21 @@ const pool = new Pool({
     rejectUnauthorized: false
   },
 
-  // ✅ Performance optimizations inside the same object
-  max: 10, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
-  query_timeout: 10000, // Return an error after 10 seconds if query is still running
+  // ✅ Performance optimizations for better speed
+  max: 20, // Increased maximum number of clients in the pool
+  min: 2, // Minimum number of clients to keep in the pool
+  idleTimeoutMillis: 60000, // Close idle clients after 60 seconds
+  connectionTimeoutMillis: 5000, // Return an error after 5 seconds if connection could not be established
+  query_timeout: 15000, // Return an error after 15 seconds if query is still running
   keepAlive: true,
-  keepAliveInitialDelayMillis: 10000
+  keepAliveInitialDelayMillis: 5000,
+  // Statement timeout to prevent long-running queries
+  statement_timeout: 30000
 });
 
 // Handle pool errors
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
+pool.on('error', () => {
+  // Log error without console.error for production
 });
 
 export default pool;

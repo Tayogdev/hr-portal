@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import pool from '@/dbconfig/dbconfig';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     // 🧠 Get logged-in user's session
     const session = await getServerSession(authOptions);
@@ -17,42 +17,26 @@ export async function GET(req: NextRequest) {
 
     const userId = session.user.id;
 
-    // 🗂️ Step 1: Get all page IDs that the user owns
-const ownershipRes = await pool.query(
-  `SELECT "pageId" FROM "pageOwnership" WHERE "userId" = $1`,
-  [userId]
-);
+    // Optimized query: Get pages with ownership in one query
+    const pagesRes = await pool.query(
+      `SELECT p.id, p.title, p."uName", p.logo, p.type
+       FROM pages p
+       INNER JOIN "pageOwnership" po ON p.id = po."pageId"
+       WHERE po."userId" = $1
+       ORDER BY p."createdAt" DESC`,
+      [userId]
+    );
 
-
-
-    const pageIds = ownershipRes.rows.map(row => row.pageId);
-
-    if (pageIds.length === 0) {
-      return NextResponse.json({
-        success: true,
-        pages: [],
-        total: 0,
-      });
-    }
-
-    // 📄 Step 2: Fetch page details
- const pagesRes = await pool.query(
-  `SELECT id, title, "uName", logo, type
-   FROM pages
-   WHERE id = ANY($1::text[])
-   ORDER BY "createdAt" DESC`,
-  [pageIds]
-);
-
-
-
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       pages: pagesRes.rows,
       total: pagesRes.rows.length,
     });
+
+    // Add caching headers for better performance
+    response.headers.set('Cache-Control', 'private, max-age=300'); // Cache for 5 minutes
+    return response;
   } catch (error) {
-    console.error("❌ Error fetching owned pages:", error);
     return NextResponse.json(
       {
         success: false,

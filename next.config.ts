@@ -25,6 +25,10 @@ const nextConfig = {
     workerThreads: false,
     cpus: 1,
   },
+  // Performance optimizations
+  compress: true,
+  poweredByHeader: false,
+  generateEtags: false,
   generateBuildId: async () => {
     return 'build-' + Date.now();
   },

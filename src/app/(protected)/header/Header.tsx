@@ -11,9 +11,10 @@ import {
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { Bell, Plus } from 'lucide-react';
+import { Bell, Plus, Loader2 } from 'lucide-react';
+import { useLoading } from '@/components/LoadingProvider';
 
 type Page = {
   id: string;
@@ -39,11 +40,15 @@ const routeSegmentMap: Record<string, string> = {
 export default function Header(): React.JSX.Element | null {
   const { data: session, status } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
+  const { startLoading } = useLoading();
 
   const [currentJobTitle, setCurrentJobTitle] = useState<string | null>(null);
   const [loadingJobTitle, setLoadingJobTitle] = useState<boolean>(false);
   const [pages, setPages] = useState<Page[]>([]);
   const [loadingPages, setLoadingPages] = useState(true);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [loadingPageId, setLoadingPageId] = useState<string | null>(null);
 
   useEffect(() => {
     const jobDetailPathMatch = pathname.match(/^\/job-listing\/([^/]+)/);
@@ -61,8 +66,7 @@ export default function Header(): React.JSX.Element | null {
           } else {
             setCurrentJobTitle('Job Details');
           }
-        } catch (err) {
-          console.error('Failed to fetch job title:', err);
+        } catch {
           setCurrentJobTitle('Job Details');
         } finally {
           setLoadingJobTitle(false);
@@ -76,6 +80,11 @@ export default function Header(): React.JSX.Element | null {
     }
   }, [pathname]);
 
+  // Reset loading state when pathname changes
+  useEffect(() => {
+    setLoadingPageId(null);
+  }, [pathname]);
+
   // Fetch pages on mount
   useEffect(() => {
     const fetchPages = async () => {
@@ -85,8 +94,8 @@ export default function Header(): React.JSX.Element | null {
         if (data.success) {
           setPages(data.pages);
         }
-      } catch (error) {
-        console.error('Error fetching pages:', error);
+      } catch {
+        // Silently handle page fetch error
       } finally {
         setLoadingPages(false);
       }
@@ -176,9 +185,9 @@ export default function Header(): React.JSX.Element | null {
           )}
 
           {/* Switch Sidebar */}
-          <Sheet>
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
-              <button className="flex items-center gap-2 bg-white text-gray-800 border border-gray-300 px-4 py-2 rounded-full hover:bg-gray-100 transition-colors font-medium">
+              <button className="flex items-center gap-2 bg-white text-gray-800 border border-gray-300 px-4 py-2 rounded-full hover:bg-gray-100 transition-colors font-medium" >
                 Switch
               </button>
             </SheetTrigger>
@@ -195,14 +204,27 @@ export default function Header(): React.JSX.Element | null {
                   <p className="text-sm text-gray-500">No pages available.</p>
                 ) : (
                   pages.map((page) => (
-                    <Link
+                    <button
                       key={page.id}
-                      href={`/${page.uName}`}
-                      className="block bg-gray-100 px-3 py-2 rounded hover:bg-gray-200 transition"
+                      onClick={async () => {
+                        setLoadingPageId(page.id);
+                        startLoading();
+                        setSheetOpen(false); // Close sheet immediately
+                        router.push(`/job-listing?pageId=${page.id}`);
+                      }}
+                      disabled={loadingPageId === page.id}
+                      className="block w-full text-left bg-gray-100 px-3 py-2 rounded hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <div className="text-sm font-medium">{page.title}</div>
-                      <div className="text-xs text-gray-500 truncate">/{page.uName}</div>
-                    </Link>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium">{page.title}</div>
+                          <div className="text-xs text-gray-500 truncate">/{page.uName}</div>
+                        </div>
+                        {loadingPageId === page.id && (
+                          <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                        )}
+                      </div>
+                    </button>
                   ))
                 )}
               </div>
@@ -212,7 +234,7 @@ export default function Header(): React.JSX.Element | null {
           {/* Post Event */}
           {pathname === '/events' && (
             <button
-              onClick={() => console.log('Post a new event button clicked')}
+              onClick={() => {}}
               className="flex items-center gap-2 bg-white text-blue-600 border border-blue-600 px-4 py-2 rounded-full hover:bg-blue-50 transition-colors font-medium"
             >
               Post a new Event

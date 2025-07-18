@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
 
 type Page = {
   id: string;
@@ -14,7 +13,6 @@ type Page = {
 export default function DashboardPage(): React.JSX.Element {
   const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(true);
-  const { data: session } = useSession();
 
   useEffect(() => {
     const fetchPages = async () => {

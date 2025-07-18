@@ -1,69 +1,67 @@
-// Performance monitoring utility
-export class PerformanceMonitor {
-  private static instance: PerformanceMonitor;
-  private metrics: Map<string, number[]> = new Map();
+/**
+ * Lightweight performance utilities for HR Portal
+ */
 
-  private constructor() {}
+// Simple debounce function
+export function debounce<T extends (...args: unknown[]) => unknown>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
 
-  static getInstance(): PerformanceMonitor {
-    if (!PerformanceMonitor.instance) {
-      PerformanceMonitor.instance = new PerformanceMonitor();
+// Simple cache manager
+export class CacheManager {
+  private cache = new Map<string, { data: unknown; timestamp: number; ttl: number }>();
+  
+  set(key: string, data: unknown, ttl: number = 300000): void {
+    this.cache.set(key, { data, timestamp: Date.now(), ttl });
+  }
+  
+  get(key: string): unknown | null {
+    const item = this.cache.get(key);
+    if (!item) return null;
+    
+    if (Date.now() - item.timestamp > item.ttl) {
+      this.cache.delete(key);
+      return null;
     }
-    return PerformanceMonitor.instance;
+    
+    return item.data;
   }
-
-  startTimer(operation: string): () => void {
-    const startTime = performance.now();
-    return () => {
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-      
-      if (!this.metrics.has(operation)) {
-        this.metrics.set(operation, []);
-      }
-      this.metrics.get(operation)!.push(duration);
-      
-      // Keep only last 100 measurements
-      const measurements = this.metrics.get(operation)!;
-      if (measurements.length > 100) {
-        measurements.shift();
-      }
-    };
-  }
-
-  getAverageTime(operation: string): number {
-    const measurements = this.metrics.get(operation);
-    if (!measurements || measurements.length === 0) {
-      return 0;
-    }
-    return measurements.reduce((sum, time) => sum + time, 0) / measurements.length;
-  }
-
-  getMetrics(): Record<string, number> {
-    const result: Record<string, number> = {};
-    for (const [operation] of this.metrics.entries()) {
-      result[operation] = this.getAverageTime(operation);
-    }
-    return result;
-  }
-
-  clearMetrics(): void {
-    this.metrics.clear();
+  
+  clear(): void {
+    this.cache.clear();
   }
 }
 
-// Utility function to measure API performance
-export const measureApiPerformance = async <T>(
-  operation: string,
-  apiCall: () => Promise<T>
-): Promise<T> => {
-  const monitor = PerformanceMonitor.getInstance();
-  const endTimer = monitor.startTimer(operation);
+// API call optimizer to prevent duplicates
+export const apiCallOptimizer = {
+  pendingCalls: new Map<string, Promise<unknown>>(),
   
-  try {
-    const result = await apiCall();
-    return result;
-  } finally {
-    endTimer();
+  async call<T>(key: string, apiCall: () => Promise<T>): Promise<T> {
+    if (this.pendingCalls.has(key)) {
+      return this.pendingCalls.get(key) as Promise<T>;
+    }
+    
+    const promise = apiCall();
+    this.pendingCalls.set(key, promise);
+    
+    try {
+      return await promise;
+    } finally {
+      this.pendingCalls.delete(key);
+    }
+  },
+  
+  clear(): void {
+    this.pendingCalls.clear();
   }
-}; 
+};
+
+// Export singleton instances
+export const cacheManager = new CacheManager();

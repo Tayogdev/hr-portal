@@ -34,7 +34,7 @@ export async function middleware(req: NextRequest) {
     if (path.startsWith('/api/')) {
       return NextResponse.json(
         { 
-          error: 'Forbidden - User not registered in system',
+          error: 'User not registered. Please register on tayog.in to access this dashboard.',
           details: 'You must be registered in our system to access this resource'
         },
         { status: 403 }

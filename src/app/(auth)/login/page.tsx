@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signIn, getSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 
 export default function LoginPage() {
@@ -11,6 +11,17 @@ export default function LoginPage() {
   const [verificationCode, setVerificationCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Handle error from URL parameters (e.g., from middleware redirect)
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam === 'not_registered') {
+      setError('User not found. Please register on tayog.in to access this dashboard.');
+    } else if (errorParam === 'AccessDenied') {
+      setError('Access denied. Please register on tayog.in and create pages.');
+    }
+  }, [searchParams]);
 
   const handleLogin = async (provider: 'google') => {
     setLoadingProvider(provider);
@@ -24,7 +35,15 @@ export default function LoginPage() {
 
       if (result?.error) {
         console.error("signIn error:", result.error);
-        setError('Please register on tayog.in and create pages.');
+        
+        // Handle specific error cases
+        if (result.error === 'AccessDenied') {
+          setError('User not found. Please register on tayog.in to access this dashboard.');
+        } else if (result.error === 'OAuthSignin') {
+          setError('Google sign-in failed. Please try again.');
+        } else {
+          setError('Please register on tayog.in and create pages.');
+        }
         return;
       }
 
@@ -36,7 +55,7 @@ export default function LoginPage() {
       if (session && session.user?.isRegistered) {
         router.push('/dashboard');
       } else {
-        setError('Please register on tayog.in and create pages.');
+        setError('User not found. Please register on tayog.in to access this dashboard.');
       }
     } catch (err) {
       console.error("Unexpected error during login:", err);
@@ -108,6 +127,19 @@ export default function LoginPage() {
                     If you believe this is an error, please contact support at{' '}
                     <a href="mailto:support@tayog.in" className="underline font-medium">
                       support@tayog.in
+                    </a>
+                  </p>
+                </div>
+                <div className="mt-3 text-sm text-blue-600">
+                  <p>
+                    New to Tayog?{' '}
+                    <a 
+                      href="https://tayog.in" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="underline font-medium hover:text-blue-800"
+                    >
+                      Register here
                     </a>
                   </p>
                 </div>

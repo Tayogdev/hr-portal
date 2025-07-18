@@ -85,14 +85,29 @@ export default function Header(): React.JSX.Element | null {
     setLoadingPageId(null);
   }, [pathname]);
 
-  // Fetch pages on mount
+  // Fetch pages on mount with caching
   useEffect(() => {
     const fetchPages = async () => {
       try {
+        // Check if we already have pages cached
+        const cachedPages = sessionStorage.getItem('cachedPages');
+        const cacheTime = sessionStorage.getItem('cachedPagesTime');
+        const now = Date.now();
+        
+        // Use cache if it's less than 5 minutes old
+        if (cachedPages && cacheTime && (now - parseInt(cacheTime)) < 5 * 60 * 1000) {
+          setPages(JSON.parse(cachedPages));
+          setLoadingPages(false);
+          return;
+        }
+
         const res = await fetch('/api/pages');
         const data = await res.json();
         if (data.success) {
           setPages(data.pages);
+          // Cache the pages for 5 minutes
+          sessionStorage.setItem('cachedPages', JSON.stringify(data.pages));
+          sessionStorage.setItem('cachedPagesTime', now.toString());
         }
       } catch {
         // Silently handle page fetch error
@@ -174,7 +189,7 @@ export default function Header(): React.JSX.Element | null {
             </span>
           </button>
 
-          {/* Post Job */}
+          {/* Post Job/Event */}
           {(pathname === '/dashboard' || pathname.startsWith('/job-listing')) && (
             <Link href="/job-listing/new" passHref>
               <button className="flex items-center gap-2 bg-white text-blue-600 border border-blue-600 px-4 py-2 rounded-full hover:bg-blue-50 transition-colors font-medium">
@@ -210,7 +225,13 @@ export default function Header(): React.JSX.Element | null {
                         setLoadingPageId(page.id);
                         startLoading();
                         setSheetOpen(false); // Close sheet immediately
-                        router.push(`/job-listing?pageId=${page.id}`);
+                        
+                        // Route to appropriate page based on current path
+                        if (pathname.startsWith('/events')) {
+                          router.push(`/events?pageId=${page.id}`);
+                        } else {
+                          router.push(`/job-listing?pageId=${page.id}`);
+                        }
                       }}
                       disabled={loadingPageId === page.id}
                       className="block w-full text-left bg-gray-100 px-3 py-2 rounded hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"

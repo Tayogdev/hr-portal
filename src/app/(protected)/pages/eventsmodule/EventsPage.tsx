@@ -1,80 +1,143 @@
 'use client'; 
-// This marks the component as client-side in a Next.js app.
 
-import React, { useState, useRef, useEffect } from 'react';
-// Importing React and necessary hooks:
-// useState - to manage component state
-// useRef - to reference DOM elements
-// useEffect - to handle side effects like event listeners
-
-import { Calendar, ChevronDown } from 'lucide-react';
-// Importing icon components (calendar icon and dropdown arrow)
-
-import { useRouter } from 'next/navigation';
-// useRouter allows us to navigate programmatically
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { ChevronDown, Loader2 } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { useLoading } from '@/components/LoadingProvider';
 
 // Defining the structure of an Event using TypeScript interface
 interface Event {
+  id: string;
   eventName: string;         // Name of the event
   status: 'Live' | 'Closed'; // Status of the event
   eventType: string;         // Type: Workshop, Webinar, etc.
   postedOn: string;          // When the event was posted
   dueDate: string;           // Deadline to register
   totalRegistration: number; // Number of people registered
+  active: boolean;
 }
 
 export default function Events(): React.JSX.Element {
-  // Initial list of events stored in state
-  const [eventList, setEventList] = useState<Event[]>([
-    {
-      eventName: 'User Experience and Research Conference',
-      status: 'Live',
-      eventType: 'Conference',
-      postedOn: '2024-04-10',
-      dueDate: '2024-11-25',
-      totalRegistration: 750,
-    },
-    {
-      eventName: 'Annual Tech Conference 2024',
-      status: 'Live',
-      eventType: 'Conference',
-      postedOn: '2023-11-15',
-      dueDate: '2024-08-10',
-      totalRegistration: 1200,
-    },
-    {
-      eventName: 'Web Development Workshop',
-      status: 'Closed',
-      eventType: 'Workshop',
-      postedOn: '2024-01-20',
-      dueDate: '2024-03-05',
-      totalRegistration: 0,
-    },
-    {
-      eventName: 'Mobile App Hackathon',
-      status: 'Live',
-      eventType: 'Hackathon',
-      postedOn: '2024-02-01',
-      dueDate: '2024-07-20',
-      totalRegistration: 550,
-    },
-    {
-      eventName: 'Data Science Webinar Series',
-      status: 'Closed',
-      eventType: 'Webinar',
-      postedOn: '2023-12-01',
-      dueDate: '2024-01-30',
-      totalRegistration: 800,
-    },
-    {
-      eventName: 'Cybersecurity Summit',
-      status: 'Live',
-      eventType: 'Summit',
-      postedOn: '2024-03-10',
-      dueDate: '2024-09-15',
-      totalRegistration: 950,
-    },
-  ]);
+  const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const pageId = searchParams.get('pageId');
+  const { startLoading, stopLoading } = useLoading();
+  
+  const [eventList, setEventList] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage] = useState(1);
+  const [currentPageName, setCurrentPageName] = useState<string | null>(null);
+  const isFetchingRef = useRef(false);
+
+  const fetchEvents = useCallback(async (page: number) => {
+    if (!session || !pageId || isFetchingRef.current) return;
+    
+    try {
+      isFetchingRef.current = true;
+      setLoading(true);
+      startLoading();
+      setError(null);
+
+      const apiUrl = new URL('/api/events', window.location.origin);
+      apiUrl.searchParams.set('page', page.toString());
+      apiUrl.searchParams.set('limit', '10');
+      apiUrl.searchParams.set('pageId', pageId);
+      apiUrl.searchParams.set('_t', Date.now().toString());
+
+      const response = await fetch(apiUrl.toString(), {
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch events (${response.status})`);
+      }
+
+      const result = await response.json();
+      if (result.success && result.data) {
+        setEventList(result.data.events || []);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load events');
+      setEventList([]);
+    } finally {
+      setLoading(false);
+      stopLoading();
+      isFetchingRef.current = false;
+    }
+  }, [session, pageId, startLoading, stopLoading]);
+
+  // Cleanup loading state on unmount
+  useEffect(() => {
+    return () => {
+      stopLoading();
+    };
+  }, [stopLoading]);
+
+  // Fetch page name
+  useEffect(() => {
+    if (!pageId) {
+      setCurrentPageName(null);
+      return;
+    }
+
+    const cachedName = sessionStorage.getItem(`pageName_${pageId}`);
+    if (cachedName) {
+      setCurrentPageName(cachedName);
+      return;
+    }
+
+    fetch(`/api/pages/${pageId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.page) {
+          setCurrentPageName(data.page.title);
+          sessionStorage.setItem(`pageName_${pageId}`, data.page.title);
+        }
+      })
+      .catch(() => {
+        // Set a fallback name if API fails
+        setCurrentPageName('Events');
+      });
+  }, [pageId]);
+
+  // Fetch events when dependencies change
+  useEffect(() => {
+    let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
+    
+    if (session && pageId) {
+      setEventList([]);
+      setLoading(true);
+      setError(null);
+      
+      // Add a small delay to prevent rapid successive calls
+      timeoutId = setTimeout(() => {
+        if (!isMounted) return;
+        
+        // Call fetchEvents directly instead of including it in dependencies
+        fetchEvents(currentPage).then(() => {
+          if (!isMounted) return;
+        }).catch(() => {
+          if (!isMounted) return;
+          // Silent error handling for production
+        });
+      }, 100);
+    } else if (session && !pageId) {
+      setEventList([]);
+      setLoading(false);
+      setError(null);
+    }
+    
+    return () => {
+      isMounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [currentPage, session, pageId]); // Removed fetchEvents to prevent infinite loops
 
   // Track which dropdown is open (only one at a time)
   const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(null);
@@ -119,6 +182,44 @@ export default function Events(): React.JSX.Element {
     return status === 'Live' ? 'bg-green-500' : 'bg-transparent';
   };
 
+  if (loading) {
+    return (
+      <div className="p-8 bg-[#F8F9FC] min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-gray-600">Loading events...</p>
+          {currentPageName && <p className="text-sm text-gray-500 mt-2">for {currentPageName}</p>}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 bg-[#F8F9FC] min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Error: {error}</p>
+          <button 
+            onClick={() => fetchEvents(currentPage)}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!pageId) {
+    return (
+      <div className="p-8 bg-[#F8F9FC] min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Please select a page to view events</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
       {/* Header Section */}
@@ -126,15 +227,9 @@ export default function Events(): React.JSX.Element {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Events</h1>
           <p className="text-sm sm:text-base text-gray-600">
-            Events listed from 3rd Nov 2023 to 17th Aug 2024  
+            {currentPageName ? `Events for ${currentPageName}` : 'Events'}
           </p>
         </div>
-
-        {/* Date Range Button (just UI here) */}
-        <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 transition-colors text-sm">
-          <Calendar className="w-5 h-5 text-gray-500" />
-          <span>3rd Nov 2023 to 17th Aug 2024</span>
-        </button>
       </div>
 
       {/* Table Section */}
@@ -214,8 +309,7 @@ export default function Events(): React.JSX.Element {
                   ) : (
                     <button
                       onClick={() => {
-                        const encodedName = encodeURIComponent(event.eventName); // Safe for URL
-                        router.push(`/events/${encodedName}`); // Redirect to event detail page
+                        router.push(`/events/${event.id}`); // Redirect to event detail page using ID
                       }}
                       className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-3 py-1.5 rounded-full transition-colors"
                     >

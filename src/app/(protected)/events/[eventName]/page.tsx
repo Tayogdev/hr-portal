@@ -93,7 +93,7 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({ isOpen,
 
 export default function EventPage() {
   const params = useParams();
-  const eventName = decodeURIComponent(params.eventName as string);
+  const eventId = params.eventName as string; // Using eventName parameter as eventId
 
   const [jobStatus, setJobStatus] = useState<'Live' | 'Closed'>('Live');
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
@@ -101,6 +101,9 @@ export default function EventPage() {
   const [selectedTab, setSelectedTab] = useState<'all' | 'final'>('all');
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
   const [selectedApplicant, setSelectedApplicant] = useState<ApplicantProfile | null>(null);
+  const [eventDetails, setEventDetails] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // States for Modals
   const [isAssignTaskModalOpen, setIsAssignTaskModalOpen] = useState(false);
@@ -109,85 +112,122 @@ export default function EventPage() {
   const [editingInterview, setEditingInterview] = useState<any | null>(null);
   const [activeSection, setActiveSection] = useState<'none' | 'profile' | 'resume' | 'contact' | 'files' | 'taskDetails' | 'interviewDetails'>('none');
 
-
-  const [allRegistrations] = useState<number>(22);
-  const [finalAttendees] = useState<number>(0);
+  const [allRegistrations, setAllRegistrations] = useState<number>(0);
+  const [finalAttendees, setFinalAttendees] = useState<number>(0);
+  const [applicants, setApplicants] = useState<ApplicantProfile[]>([]);
 
   const statusRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const applicants: ApplicantProfile[] = [
-    {
-      id: 1,
-      name: 'John Doe',
-      image: '/avatar-placeholder.png',
-      type: 'Student',
-      title: 'Frontend Developer',
-      tags: ['React', 'JavaScript', 'CSS'],
-      appliedDate: 'July 1',
-      score: 8,
-      status: 'SHORTLISTED',
-      assignedTask: { id: 'task1', title: 'Complete Frontend Assessment', description: 'Build a responsive landing page.', dueDate: '2025-07-15' },
-      scheduledInterview: { id: 'interview1', date: 'Monday, July 14, 2025', time: '10:00 AM', interviewer: 'Jane Smith', mode: 'Google Meet', link: 'https://meet.google.com/abc-xyz', notes: 'Discuss project experience and problem-solving skills.' },
-      resumePath: '/resume-sample.pdf', // Path to John Doe's resume in public folder
-    },
-    {
-      id: 2,
-      name: 'Alice Smith',
-      image: '/avatar-placeholder.png',
-      type: 'Professional',
-      title: 'Software Engineer',
-      tags: ['Python', 'Django'],
-      appliedDate: 'July 2',
-      score: 7,
-      status: 'FINAL',
-      assignedTask: undefined,
-      scheduledInterview: undefined,
-      resumePath: '/Alice_Smith_Resume.pdf', // Path to Alice Smith's resume
-    },
-    {
-      id: 3,
-      name: 'Raj Kumar',
-      image: '/avatar-placeholder.png',
-      type: 'Student',
-      title: 'Backend Intern',
-      tags: ['Node.js', 'MongoDB'],
-      appliedDate: 'July 3',
-      score: 5,
-      status: 'REJECTED',
-      assignedTask: undefined,
-      scheduledInterview: undefined,
-      resumePath: '/Raj_Kumar_Resume.pdf', // Path to Raj Kumar's resume
-    },
-    {
-      id: 4,
-      name: 'Emily Zhang',
-      image: '/avatar-placeholder.png',
-      type: 'Foreign National',
-      title: 'UI/UX Designer',
-      tags: ['Figma', 'Sketch'],
-      appliedDate: 'July 4',
-      score: 9,
-      status: 'SHORTLISTED',
-      assignedTask: undefined,
-      scheduledInterview: undefined,
-      resumePath: '/Emily_Zhang_Resume.pdf', // Path to Emily Zhang's resume
-    },
-    {
-      id: 5,
-      name: 'Carlos Rivera',
-      image: '/avatar-placeholder.png',
-      type: 'Professional',
-      title: 'DevOps Engineer',
-      tags: ['AWS', 'Docker', 'Kubernetes'],
-      appliedDate: 'July 5',
-      score: 6,
-      status: 'FINAL',
-      assignedTask: undefined,
-      scheduledInterview: undefined,
-      resumePath: '/Carlos_Rivera_Resume.pdf', // Path to Carlos Rivera's resume
-    },
-  ];
+  // Fetch event data and applicants
+  useEffect(() => {
+    const fetchEventData = async () => {
+      if (!eventId) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // For now, we'll use static data since eventApplicants table doesn't exist
+        // This keeps the functionality as-is for future implementation
+        setEventDetails({
+          id: eventId,
+          title: 'Sample Event',
+          type: 'Conference',
+          isOnline: true,
+          createdAt: new Date().toISOString(),
+          regEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+        });
+        
+        setAllRegistrations(22);
+        setFinalAttendees(0);
+        
+        // Keep the static applicants data for now
+        const staticApplicants: ApplicantProfile[] = [
+          {
+            id: 1,
+            name: 'John Doe',
+            image: '/avatar-placeholder.png',
+            type: 'Student',
+            title: 'Frontend Developer',
+            tags: ['React', 'JavaScript', 'CSS'],
+            appliedDate: 'July 1',
+            score: 8,
+            status: 'SHORTLISTED',
+            assignedTask: { id: 'task1', title: 'Complete Frontend Assessment', description: 'Build a responsive landing page.', dueDate: '2025-07-15' },
+            scheduledInterview: { id: 'interview1', date: 'Monday, July 14, 2025', time: '10:00 AM', interviewer: 'Jane Smith', mode: 'Google Meet', link: 'https://meet.google.com/abc-xyz', notes: 'Discuss project experience and problem-solving skills.' },
+            resumePath: '/resume-sample.pdf',
+          },
+          {
+            id: 2,
+            name: 'Alice Smith',
+            image: '/avatar-placeholder.png',
+            type: 'Professional',
+            title: 'Software Engineer',
+            tags: ['Python', 'Django'],
+            appliedDate: 'July 2',
+            score: 7,
+            status: 'FINAL',
+            assignedTask: undefined,
+            scheduledInterview: undefined,
+            resumePath: '/Alice_Smith_Resume.pdf',
+          },
+          {
+            id: 3,
+            name: 'Raj Kumar',
+            image: '/avatar-placeholder.png',
+            type: 'Student',
+            title: 'Backend Intern',
+            tags: ['Node.js', 'MongoDB'],
+            appliedDate: 'July 3',
+            score: 5,
+            status: 'REJECTED',
+            assignedTask: undefined,
+            scheduledInterview: undefined,
+            resumePath: '/Raj_Kumar_Resume.pdf',
+          },
+          {
+            id: 4,
+            name: 'Emily Zhang',
+            image: '/avatar-placeholder.png',
+            type: 'Foreign National',
+            title: 'UI/UX Designer',
+            tags: ['Figma', 'Sketch'],
+            appliedDate: 'July 4',
+            score: 9,
+            status: 'SHORTLISTED',
+            assignedTask: undefined,
+            scheduledInterview: undefined,
+            resumePath: '/Emily_Zhang_Resume.pdf',
+          },
+          {
+            id: 5,
+            name: 'Carlos Rivera',
+            image: '/avatar-placeholder.png',
+            type: 'Professional',
+            title: 'DevOps Engineer',
+            tags: ['AWS', 'Docker', 'Kubernetes'],
+            appliedDate: 'July 5',
+            score: 6,
+            status: 'FINAL',
+            assignedTask: undefined,
+            scheduledInterview: undefined,
+            resumePath: '/Carlos_Rivera_Resume.pdf',
+          },
+        ];
+        
+        setApplicants(staticApplicants);
+        
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load event data');
+        setApplicants([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEventData();
+  }, [eventId]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -300,6 +340,27 @@ export default function EventPage() {
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 md:p-6">
+      {loading ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading event data...</p>
+          </div>
+        </div>
+      ) : error ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">Error: {error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Header */}
       <div className="bg-white rounded-lg p-4 mb-6 flex flex-col md:flex-row justify-between gap-4">
         <div className="flex gap-4">
@@ -307,9 +368,16 @@ export default function EventPage() {
             <Image src="/job-icon.png" alt="Icon" width={24} height={24} />
           </div>
           <div>
-            <h1 className="text-lg md:text-xl font-semibold text-gray-900">{eventName}</h1>
-            <p className="text-sm text-gray-500">Company • Remote • Needs 2/5</p>
-            <p className="text-sm text-gray-500">Posted on 01/05/2024 • Closing on 10/08/2024</p>
+                <h1 className="text-lg md:text-xl font-semibold text-gray-900">
+                  {eventDetails?.title || 'Event Details'}
+                </h1>
+                <p className="text-sm text-gray-500">
+                  {eventDetails?.type || 'Event'} • {eventDetails?.isOnline ? 'Online' : 'Offline'}
+                </p>
+                <p className="text-sm text-gray-500">
+                  Posted on {eventDetails?.createdAt ? new Date(eventDetails.createdAt).toLocaleDateString() : 'N/A'} • 
+                  Closing on {eventDetails?.regEndDate ? new Date(eventDetails.regEndDate).toLocaleDateString() : 'N/A'}
+                </p>
           </div>
         </div>
 
@@ -351,7 +419,7 @@ export default function EventPage() {
             className="text-gray-500 hover:bg-gray-100"
             onClick={() => {
               navigator.clipboard.writeText(window.location.href);
-              alert('Job link copied to clipboard!');
+                  alert('Event link copied to clipboard!');
             }}
           >
             <Share2 className="w-5 h-5" />
@@ -365,13 +433,15 @@ export default function EventPage() {
             </button>
             {jobMenuOpen && (
               <div className="absolute right-0 mt-1 bg-white border rounded shadow z-10 w-40">
-                <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">Edit Job</button>
-                <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">Delete Job</button>
+                    <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">Edit Event</button>
+                    <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">Delete Event</button>
               </div>
             )}
           </div>
         </div>
       </div>
+        </>
+      )}
 
       {/* Tabs */}
       <div className="border-b border-gray-200 mb-4 md:mb-6 overflow-x-auto">

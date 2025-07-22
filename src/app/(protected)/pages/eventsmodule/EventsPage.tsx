@@ -1,7 +1,7 @@
 'use client'; 
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useLoading } from '@/components/LoadingProvider';
@@ -139,48 +139,8 @@ export default function Events(): React.JSX.Element {
     };
   }, [currentPage, session, pageId]); // Removed fetchEvents to prevent infinite loops
 
-  // Track which dropdown is open (only one at a time)
-  const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(null);
-
-  // Ref to check clicks outside dropdown
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
   // For routing to a dynamic event page (Review Applicants)
   const router = useRouter();
-
-  // Close dropdown when user clicks outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpenDropdownIndex(null); // Close the dropdown
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside); // Add event listener
-    return () => document.removeEventListener('mousedown', handleClickOutside); // Clean up
-  }, []);
-
-  // Function to update event status (Live <-> Closed)
-  const updateStatus = (index: number, newStatus: 'Live' | 'Closed') => {
-    const updated = [...eventList];        // Copy the event list
-    updated[index].status = newStatus;     // Change the status
-    setEventList(updated);                 // Update state
-    setOpenDropdownIndex(null);            // Close dropdown
-  };
-
-  // Function to style the status button
-  const getStatusClasses = (status: Event['status']) => {
-    if (status === 'Live') {
-      return 'border-green-300 text-gray-700 hover:bg-green-50';
-    } else {
-      return 'border-gray-300 text-gray-700 hover:bg-gray-50';
-    }
-  };
-
-  // Function to get the status dot color
-  const getDotClasses = (status: Event['status']) => {
-    return status === 'Live' ? 'bg-green-500' : 'bg-transparent';
-  };
 
   if (loading) {
     return (
@@ -213,114 +173,135 @@ export default function Events(): React.JSX.Element {
   if (!pageId) {
     return (
       <div className="p-8 bg-[#F8F9FC] min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">Please select a page to view events</p>
+        <div className="text-center max-w-md">
+          <div className="text-6xl mb-4">🎫</div>
+          <h2 className="text-2xl font-semibold text-gray-800 mb-2">No Page Selected</h2>
+          <p className="text-gray-600 mb-6">Please select a page from the sidebar to view events.</p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-blue-800 text-sm">💡 <strong>Tip:</strong> Click the &quot;Switch&quot; button in the header.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (eventList.length === 0 && !loading) {
+    return (
+      <div className="p-8 bg-[#F8F9FC] min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="text-6xl mb-4">🎫</div>
+          <h2 className="text-2xl font-semibold text-gray-800 mb-2">No Events Found</h2>
+          <p className="text-gray-600 mb-4">
+            {currentPageName ? `No events found for ${currentPageName}.` : "No events found."}
+          </p>
+          <div className="flex gap-2 justify-center">
+            <button 
+              onClick={() => fetchEvents(currentPage)} 
+              disabled={loading}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Refresh
+            </button>
+            <button 
+              onClick={() => window.location.href = '/events'}
+              className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
+            >
+              Select Different Page
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
-      {/* Header Section */}
+    <div className="p-4 sm:p-6 md:p-8 bg-[#F8F9FC] min-h-screen">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Events</h1>
-          <p className="text-sm sm:text-base text-gray-600">
-            {currentPageName ? `Events for ${currentPageName}` : 'Events'}
+          <h1 className="text-xl md:text-2xl font-semibold mb-1">
+            Events
+            {currentPageName && <span className="text-lg text-blue-600 ml-2">- {currentPageName}</span>}
+          </h1>
+          <p className="text-gray-500 text-sm">
+            Here are your events from {new Date().toLocaleDateString('en-GB')} to {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB')}
           </p>
+          {session?.user && (
+            <p className="text-sm text-blue-600 mt-1">Showing events for: {session.user.email}</p>
+          )}
         </div>
       </div>
 
       {/* Table Section */}
-      <div className="w-full overflow-x-auto rounded-lg shadow-md">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="bg-[#4F5B67] text-white text-xs sm:text-sm">
-              <th className="py-3 px-4 text-left">Event Name</th>
-              <th className="py-3 px-4 text-left">Status</th>
-              <th className="py-3 px-4 text-left">Event Type</th>
-              <th className="py-3 px-4 text-left">Posted On</th>
-              <th className="py-3 px-4 text-left">Due Date</th>
-              <th className="py-3 px-4 text-center">Registrations</th>
-              <th className="py-3 px-4 text-left">Action</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {eventList.map((event, index) => (
-              <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
-
+      <div className="w-full overflow-x-auto rounded-xl shadow bg-white">
+        <div className="min-w-[800px] w-full">
+          {/* Table Header */}
+          <div className="bg-[#4A5568] text-white px-6 py-4">
+            <div className="grid grid-cols-7 gap-4">
+              {['Event Name', 'Status', 'Event Type', 'Posted on', 'Due Date', 'Registrations', 'Action'].map((header) => (
+                <div key={header} className="font-medium">{header}</div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Table Rows */}
+          {eventList.map((event, index) => (
+            <div key={index} className="border-b last:border-0 px-6 py-4 hover:bg-gray-50">
+              <div className="grid grid-cols-7 gap-4 items-center">
                 {/* Event Name with Logo */}
-                <td className="py-3 px-4 text-gray-700 whitespace-nowrap flex items-center">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                   <img
-                    src="/job-icon.png"  // Logo from public folder
+                    src="/job-icon.png"
                     alt="Event Logo"
-                    className="w-10 h-10 object-contain mr-3 flex-shrink-0"
+                    className="w-8 h-8 object-contain"
                   />
-                  <span className="text-sm sm:text-base">{event.eventName}</span>
-                </td>
+                  <span className="font-medium">{event.eventName}</span>
+                </div>
 
-                {/* Status Button with Dropdown */}
-                <td className="py-3 px-4 relative">
-                  <div ref={openDropdownIndex === index ? dropdownRef : null}>
-                    <button
-                      onClick={() =>
-                        setOpenDropdownIndex(openDropdownIndex === index ? null : index)
-                      }
-                      className={`px-3 py-1.5 border rounded-full text-xs font-semibold flex items-center gap-1 transition-colors ${getStatusClasses(event.status)}`}
-                    >
-                      {event.status === 'Live' && (
-                        <span className={`w-2 h-2 rounded-full ${getDotClasses(event.status)}`}></span>
-                      )}
-                      {event.status}
-                      <ChevronDown className="w-4 h-4 text-gray-500" />
-                    </button>
+                {/* Status */}
+                <div>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    event.status === 'Live' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {event.status}
+                  </span>
+                </div>
 
-                    {/* Dropdown options */}
-                    {openDropdownIndex === index && (
-                      <div className="absolute mt-1 left-0 bg-white border border-gray-200 rounded-md shadow-md z-10 w-28">
-                        {['Live', 'Closed'].map((statusOption) => (
-                          <button
-                            key={statusOption}
-                            onClick={() => updateStatus(index, statusOption as 'Live' | 'Closed')}
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
-                          >
-                            {statusOption}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </td>
+                {/* Event Type */}
+                <div className="text-gray-600">{event.eventType}</div>
 
-                {/* Other Table Data */}
-                <td className="py-3 px-4 text-gray-700">{event.eventType}</td>
-                <td className="py-3 px-4 text-gray-700">{event.postedOn}</td>
-                <td className="py-3 px-4 text-gray-700">{event.dueDate}</td>
-                <td className="py-3 px-4 text-gray-700 text-center">{event.totalRegistration}</td>
+                {/* Posted On */}
+                <div className="text-gray-600">{event.postedOn}</div>
 
-                {/* Action Button */}
-                <td className="py-3 px-4 text-center">
+                {/* Due Date */}
+                <div className="text-gray-600">{event.dueDate}</div>
+
+                {/* Registrations */}
+                <div className="text-gray-600">{event.totalRegistration}</div>
+
+                {/* Action */}
+                <div>
                   {event.status === 'Closed' ? (
-                    <button className="bg-purple-100 text-purple-700 hover:bg-purple-200 text-xs sm:text-sm px-3 py-1.5 rounded-full transition-colors">
+                    <button className="bg-purple-100 text-purple-700 hover:bg-purple-200 text-xs px-3 py-1.5 rounded-full transition-colors">
                       Closed
                     </button>
                   ) : (
                     <button
                       onClick={() => {
-                        router.push(`/events/${event.id}`); // Redirect to event detail page using ID
+                        router.push(`/events/${event.id}`);
                       }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-3 py-1.5 rounded-full transition-colors"
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded-full transition-colors"
                     >
                       Review Applicants
                     </button>
                   )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

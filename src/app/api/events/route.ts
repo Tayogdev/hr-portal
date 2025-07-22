@@ -31,6 +31,7 @@ interface EventQueryResult {
   website: string | null;
   email: string | null;
   contact: string | null;
+  registration_count?: number;
 }
 
 interface FormattedEvent {
@@ -75,8 +76,16 @@ export async function GET(request: NextRequest) {
     const query = `
       SELECT
         e.*,
+        COALESCE(reg.registration_count, 0) as registration_count,
         COUNT(*) OVER() as total_count
       FROM events e
+      LEFT JOIN (
+        SELECT 
+          "eventId",
+          COUNT(*) as registration_count
+        FROM "registeredEvent"
+        GROUP BY "eventId"
+      ) reg ON e.id = reg."eventId"
       WHERE e."publishedBy" = $1
       ORDER BY e."createdAt" DESC
       LIMIT $2 OFFSET $3
@@ -93,7 +102,7 @@ export async function GET(request: NextRequest) {
       eventType: event.type || 'Event',
       postedOn: new Date(event.createdAt).toLocaleDateString('en-GB'),
       dueDate: new Date(event.regEndDate).toLocaleDateString('en-GB'),
-      totalRegistration: event.participantCount || 0, // Use participantCount from events table
+      totalRegistration: event.registration_count || 0, // Use participantCount from events table
       active: event.isVerified && new Date(event.regEndDate) > new Date(),
     }));
 

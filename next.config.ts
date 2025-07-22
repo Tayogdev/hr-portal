@@ -24,6 +24,12 @@ const nextConfig = {
   experimental: {
     workerThreads: false,
     cpus: 1,
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+  },
+  // Performance optimizations
+  swcMinify: true,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
   },
   generateBuildId: async () => {
     return 'build-' + Date.now();

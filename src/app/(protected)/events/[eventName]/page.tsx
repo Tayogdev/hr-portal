@@ -36,6 +36,11 @@ interface ApplicantProfile {
     notes?: string;
   };
   resumePath?: string; // Added resumePath to ApplicantProfile
+  email?: string; // Added email to ApplicantProfile
+  phoneNo?: string; // Added phoneNo to ApplicantProfile
+  state?: string; // Added state to ApplicantProfile
+  country?: string; // Added country to ApplicantProfile
+  bookingStatus?: string; // Added bookingStatus to ApplicantProfile
 }
 
 interface AssignTaskModalProps {
@@ -43,7 +48,7 @@ interface AssignTaskModalProps {
   onClose: () => void;
   selectedApplicantName?: string;
   onAssignTask: (taskDetails: { title: string; description: string; dueDate: string }) => void;
-  editingTask: any; // You might want to define a specific type for editingTask
+  editingTask: { id: string; title: string; description: string; dueDate: string } | null;
 }
 
 const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ isOpen, onClose, selectedApplicantName, onAssignTask, editingTask }) => {
@@ -69,7 +74,7 @@ interface ScheduleInterviewModalProps {
   onClose: () => void;
   selectedApplicantName?: string;
   onScheduleInterview: (interviewDetails: { date: string; time: string; interviewer: string; mode: string; link?: string; notes?: string }) => void;
-  editingInterview: any; // You might want to define a specific type for editingInterview
+  editingInterview: { id: string; date: string; time: string; interviewer: string; mode: string; link?: string; notes?: string } | null;
 }
 
 const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({ isOpen, onClose, selectedApplicantName, onScheduleInterview, editingInterview }) => {
@@ -101,15 +106,22 @@ export default function EventPage() {
   const [selectedTab, setSelectedTab] = useState<'all' | 'final'>('all');
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
   const [selectedApplicant, setSelectedApplicant] = useState<ApplicantProfile | null>(null);
-  const [eventDetails, setEventDetails] = useState<any>(null);
+  const [eventDetails, setEventDetails] = useState<{
+    id: string;
+    title: string;
+    type: string;
+    isOnline: boolean;
+    createdAt: string;
+    regEndDate: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // States for Modals
   const [isAssignTaskModalOpen, setIsAssignTaskModalOpen] = useState(false);
   const [isScheduleInterviewModalOpen, setIsScheduleInterviewModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<any | null>(null);
-  const [editingInterview, setEditingInterview] = useState<any | null>(null);
+  const [editingTask, setEditingTask] = useState<{ id: string; title: string; description: string; dueDate: string } | null>(null);
+  const [editingInterview, setEditingInterview] = useState<{ id: string; date: string; time: string; interviewer: string; mode: string; link?: string; notes?: string } | null>(null);
   const [activeSection, setActiveSection] = useState<'none' | 'profile' | 'resume' | 'contact' | 'files' | 'taskDetails' | 'interviewDetails'>('none');
 
   const [allRegistrations, setAllRegistrations] = useState<number>(0);
@@ -119,7 +131,7 @@ export default function EventPage() {
   const statusRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Fetch event data and applicants
+  // Fetch event data and registered users
   useEffect(() => {
     const fetchEventData = async () => {
       if (!eventId) return;
@@ -128,99 +140,95 @@ export default function EventPage() {
         setLoading(true);
         setError(null);
         
-        // For now, we'll use static data since eventApplicants table doesn't exist
-        // This keeps the functionality as-is for future implementation
-        setEventDetails({
-          id: eventId,
-          title: 'Sample Event',
-          type: 'Conference',
-          isOnline: true,
-          createdAt: new Date().toISOString(),
-          regEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-        });
+        // Fetch event details
+        const eventResponse = await fetch(`/api/events/${eventId}`);
+        const eventData = await eventResponse.json();
         
-        setAllRegistrations(22);
-        setFinalAttendees(0);
+        if (eventData.success) {
+          const event = eventData.data;
+          setEventDetails({
+            id: event.id,
+            title: event.title,
+            type: event.type,
+            isOnline: event.isOnline,
+            createdAt: event.createdAt,
+            regEndDate: event.regEndDate,
+          });
+        } else {
+          // Fallback to static data if event not found
+          setEventDetails({
+            id: eventId,
+            title: 'Sample Event',
+            type: 'Conference',
+            isOnline: true,
+            createdAt: new Date().toISOString(),
+            regEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          });
+        }
         
-        // Keep the static applicants data for now
-        const staticApplicants: ApplicantProfile[] = [
-          {
-            id: 1,
-            name: 'John Doe',
-            image: '/avatar-placeholder.png',
-            type: 'Student',
-            title: 'Frontend Developer',
-            tags: ['React', 'JavaScript', 'CSS'],
-            appliedDate: 'July 1',
-            score: 8,
-            status: 'SHORTLISTED',
-            assignedTask: { id: 'task1', title: 'Complete Frontend Assessment', description: 'Build a responsive landing page.', dueDate: '2025-07-15' },
-            scheduledInterview: { id: 'interview1', date: 'Monday, July 14, 2025', time: '10:00 AM', interviewer: 'Jane Smith', mode: 'Google Meet', link: 'https://meet.google.com/abc-xyz', notes: 'Discuss project experience and problem-solving skills.' },
-            resumePath: '/resume-sample.pdf',
-          },
-          {
-            id: 2,
-            name: 'Alice Smith',
-            image: '/avatar-placeholder.png',
-            type: 'Professional',
-            title: 'Software Engineer',
-            tags: ['Python', 'Django'],
-            appliedDate: 'July 2',
-            score: 7,
-            status: 'FINAL',
-            assignedTask: undefined,
-            scheduledInterview: undefined,
-            resumePath: '/Alice_Smith_Resume.pdf',
-          },
-          {
-            id: 3,
-            name: 'Raj Kumar',
-            image: '/avatar-placeholder.png',
-            type: 'Student',
-            title: 'Backend Intern',
-            tags: ['Node.js', 'MongoDB'],
-            appliedDate: 'July 3',
-            score: 5,
-            status: 'REJECTED',
-            assignedTask: undefined,
-            scheduledInterview: undefined,
-            resumePath: '/Raj_Kumar_Resume.pdf',
-          },
-          {
-            id: 4,
-            name: 'Emily Zhang',
-            image: '/avatar-placeholder.png',
-            type: 'Foreign National',
-            title: 'UI/UX Designer',
-            tags: ['Figma', 'Sketch'],
-            appliedDate: 'July 4',
-            score: 9,
-            status: 'SHORTLISTED',
-            assignedTask: undefined,
-            scheduledInterview: undefined,
-            resumePath: '/Emily_Zhang_Resume.pdf',
-          },
-          {
-            id: 5,
-            name: 'Carlos Rivera',
-            image: '/avatar-placeholder.png',
-            type: 'Professional',
-            title: 'DevOps Engineer',
-            tags: ['AWS', 'Docker', 'Kubernetes'],
-            appliedDate: 'July 5',
-            score: 6,
-            status: 'FINAL',
-            assignedTask: undefined,
-            scheduledInterview: undefined,
-            resumePath: '/Carlos_Rivera_Resume.pdf',
-          },
-        ];
+        // Fetch registered users for this event
+        const applicantsResponse = await fetch(`/api/events/${eventId}/applicants?page=1&limit=50`);
+        const applicantsData = await applicantsResponse.json();
         
-        setApplicants(staticApplicants);
+        if (applicantsData.success) {
+          const registeredUsers = applicantsData.data.registeredUsers;
+          setAllRegistrations(applicantsData.data.pagination.total);
+          
+          // Calculate final attendees based on booking status
+          const finalAttendeesCount = registeredUsers.filter((user: { bookingStatus: string }) => user.bookingStatus === 'SUCCESS').length;
+          setFinalAttendees(finalAttendeesCount);
+          
+          // Transform registered users to match ApplicantProfile interface
+          const transformedApplicants: ApplicantProfile[] = registeredUsers.map((user: {
+            id: string;
+            name: string;
+            email: string;
+            image?: string;
+            type: string;
+            title?: string;
+            tags?: string[];
+            appliedDate: string;
+            score?: number;
+            status: string;
+            profession?: string;
+            organizationName?: string;
+            phoneNo?: string;
+            state?: string;
+            country?: string;
+            bookingStatus: string;
+          }) => ({
+            id: parseInt(user.id) || Math.random(),
+            name: user.name,
+            image: user.image || '/avatar-placeholder.png',
+            type: user.type,
+            title: user.title || user.profession || 'Event Participant',
+            tags: user.tags || [],
+            appliedDate: user.appliedDate,
+            score: user.score || 5,
+            status: user.bookingStatus === 'SUCCESS' ? 'FINAL' : 'PENDING', // Use booking status to determine status
+            assignedTask: undefined, // You can add task assignment logic later
+            scheduledInterview: undefined, // You can add interview scheduling logic later
+            resumePath: undefined, // You can add resume upload logic later
+            email: user.email, // Add email
+            phoneNo: user.phoneNo, // Add phoneNo
+            state: user.state, // Add state
+            country: user.country, // Add country
+          }));
+          
+          setApplicants(transformedApplicants);
+        } else {
+          // Fallback to static data if API fails
+          setAllRegistrations(0);
+          setFinalAttendees(0);
+          setApplicants([]);
+        }
         
       } catch (err) {
+        console.error('Error fetching event data:', err);
         setError(err instanceof Error ? err.message : 'Failed to load event data');
         setApplicants([]);
+        setAllRegistrations(0);
+        setFinalAttendees(0);
       } finally {
         setLoading(false);
       }
@@ -309,51 +317,30 @@ export default function EventPage() {
     setEditingInterview(null);
   };
 
-  const handleEditTask = () => {
-    if (selectedApplicant?.assignedTask) {
-      setEditingTask(selectedApplicant.assignedTask);
-      setIsAssignTaskModalOpen(true);
-    } else {
-      alert('No task assigned to edit.');
-    }
-  };
-
-  const handleEditInterview = () => {
-    if (selectedApplicant?.scheduledInterview) {
-      setEditingInterview(selectedApplicant.scheduledInterview);
-      setIsScheduleInterviewModalOpen(true);
-    } else {
-      alert('No interview scheduled to edit.');
-    }
-  };
-
-  const handleAssignNewTask = () => {
-    setEditingTask(null); // Ensure no editing state for new task
-    setIsAssignTaskModalOpen(true);
-  };
-
-  const handleScheduleNewInterview = () => {
-    setEditingInterview(null); // Ensure no editing state for new interview
-    setIsScheduleInterviewModalOpen(true);
-  };
-
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 md:p-6">
       {loading ? (
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading event data...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 text-lg">Loading event details...</p>
+            <p className="text-gray-500 text-sm mt-2">Please wait while we fetch the latest information</p>
           </div>
         </div>
       ) : error ? (
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <p className="text-red-600 mb-4">Error: {error}</p>
+          <div className="text-center max-w-md">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Something went wrong</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
             <button 
               onClick={() => window.location.reload()}
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
               Try Again
             </button>
@@ -493,8 +480,27 @@ export default function EventPage() {
         <div className="col-span-12 lg:col-span-4 bg-white rounded-lg p-4 shadow-xs">
           <h2 className="text-lg font-semibold mb-4">Applicants</h2>
           {filteredApplicants.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <p>No applicants found for this filter.</p>
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No applicants yet</h3>
+              <p className="text-gray-500 mb-4">
+                {selectedFilter === 'All' 
+                  ? "This event doesn't have any registrations yet."
+                  : `No ${selectedFilter.toLowerCase()} applicants found for this filter.`
+                }
+              </p>
+              {selectedFilter !== 'All' && (
+                <button
+                  onClick={() => setSelectedFilter('All')}
+                  className="text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  View all applicants
+                </button>
+              )}
             </div>
           ) : (
             filteredApplicants.map((applicant) => {
@@ -638,24 +644,35 @@ export default function EventPage() {
           <>
     {/* Education Box */}
         <div className="bg-white rounded-2xl shadow-xs px-6 py-6 mt-6 max-w-3xl mx-auto">
-      <h3 className="text-lg font-semibold mb-2">Education</h3>
-      <p className="text-sm text-gray-700">Email: john.doe@example.com</p>
-      <p className="text-sm text-gray-700">Education: Bachelors of Design - IIT Hyderabad</p>
-      <p className="text-sm text-gray-700">Location: Remote</p>
+      <h3 className="text-lg font-semibold mb-2">Profile Information</h3>
+      <p className="text-sm text-gray-700">Email: {selectedApplicant.email || 'No email provided'}</p>
+      <p className="text-sm text-gray-700">Profession: {selectedApplicant.title || 'Not specified'}</p>
+      <p className="text-sm text-gray-700">Organization: {selectedApplicant.tags?.find(tag => tag !== selectedApplicant.title) || 'Not specified'}</p>
+      <p className="text-sm text-gray-700">Type: {selectedApplicant.type}</p>
     </div>
 
-    {/* Experience Box */}
+    {/* Registration Details Box */}
     <div className="bg-white rounded-2xl shadow-xs px-6 py-6 mt-6 max-w-3xl mx-auto">
-      <h3 className="text-lg font-semibold mb-2">Experience</h3>
-      <p className="text-sm text-gray-700">UI Design Intern at ABC Corp (Jan 2024 - Jun 2024)</p>
-      <p className="text-sm text-gray-700">Worked on mobile app prototypes and user research.</p>
+      <h3 className="text-lg font-semibold mb-2">Registration Details</h3>
+      <p className="text-sm text-gray-700">Registration Date: {selectedApplicant.appliedDate}</p>
+      <p className="text-sm text-gray-700">Status: {selectedApplicant.status}</p>
+      <p className="text-sm text-gray-700">Score: {selectedApplicant.score}/10</p>
     </div>
 
-    {/* Project Box */}
+    {/* Skills/Tags Box */}
     <div className="bg-white rounded-2xl shadow-xs px-6 py-6 mt-6 max-w-3xl mx-auto">
-      <h3 className="text-lg font-semibold mb-2">Project</h3>
-      <p className="text-sm text-gray-700">Portfolio Website - Built with React & Tailwind</p>
-      <p className="text-sm text-gray-700">Online Design Tool - Collaborative design tool using Figma API</p>
+      <h3 className="text-lg font-semibold mb-2">Skills & Tags</h3>
+      <div className="flex flex-wrap gap-2">
+        {selectedApplicant.tags && selectedApplicant.tags.length > 0 ? (
+          selectedApplicant.tags.map((tag, idx) => (
+            <span key={idx} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+              {tag}
+            </span>
+          ))
+        ) : (
+          <p className="text-sm text-gray-500">No skills or tags specified</p>
+        )}
+      </div>
     </div>
   </>
 )}
@@ -664,8 +681,10 @@ export default function EventPage() {
           {activeSection === 'contact' && (
              <div className="bg-white rounded-2xl shadow-xs px-6 py-6 mt-6 max-w-3xl mx-auto">
         <h3 className="text-lg font-semibold mb-2">Contact Details</h3>
-        <p className="text-sm text-gray-700">Phone: +91-9876543210</p>
-        <p className="text-sm text-gray-700">LinkedIn: linkedin.com/in/johndoe</p>
+        <p className="text-sm text-gray-700">Email: {selectedApplicant.email || 'No email provided'}</p>
+        <p className="text-sm text-gray-700">Phone: {selectedApplicant.phoneNo || 'No phone provided'}</p>
+        <p className="text-sm text-gray-700">State: {selectedApplicant.state || 'Not specified'}</p>
+        <p className="text-sm text-gray-700">Country: {selectedApplicant.country || 'Not specified'}</p>
       </div>
           )}
 
@@ -673,13 +692,33 @@ export default function EventPage() {
       )}
     </>
   ) : (
-    <p className="text-gray-500 text-center">Select an applicant to view details.</p>
+    <div className="text-center py-16">
+      <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      </div>
+      <h3 className="text-xl font-medium text-gray-900 mb-2">Select an applicant</h3>
+      <p className="text-gray-500 max-w-md mx-auto">
+        Choose an applicant from the list to view their detailed profile, contact information, and registration details.
+      </p>
+    </div>
   )}
 </div>
 
     </div>
   ) : (
-    <p className="text-gray-500 text-center">Select an applicant to view details.</p>
+    <div className="text-center py-16">
+      <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      </div>
+      <h3 className="text-xl font-medium text-gray-900 mb-2">Select an applicant</h3>
+      <p className="text-gray-500 max-w-md mx-auto">
+        Choose an applicant from the list to view their detailed profile, contact information, and registration details.
+      </p>
+    </div>
   )}
 </div>
 

@@ -57,11 +57,11 @@ export class EmailService {
   async sendReactEmail(
     to: string,
     subject: string,
-    ReactComponent: React.ComponentType<any>,
-    props: any = {}
+    ReactComponent: React.ComponentType<Record<string, unknown>>,
+    props: Record<string, unknown> = {}
   ): Promise<boolean> {
     try {
-      const html = render(React.createElement(ReactComponent, props));
+      const html = await render(React.createElement(ReactComponent, props));
       
       return await this.sendEmail({
         from: process.env.DEFAULT_FROM_EMAIL || 'dhageravindra28@gmail.com',

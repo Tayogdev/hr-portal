@@ -28,39 +28,6 @@ type NavItem = {
   icon: React.JSX.Element;
 };
 
-const navItems: NavItem[] = [
-  {
-    name: 'Dashboard',
-    href: '/dashboard',
-    icon: <LayoutDashboard className="w-5 h-5" />,
-  },
-  {
-    name: 'Job listing',
-    href: '/job-listing',
-    icon: <Briefcase className="w-5 h-5" />,
-  },
-  {
-    name: 'Events',
-    href: '/events',
-    icon: <Ticket className="w-5 h-5" />, 
-  },
-  {
-    name: 'All applicants',
-    href: '/all-applicants',
-    icon: <Users className="w-5 h-5" />,
-  },
-  {
-    name: 'Organization',
-    href: '/organization',
-    icon: <Building2 className="w-5 h-5" />,
-  },
-  {
-    name: 'Schedule',
-    href: '/schedule',
-    icon: <Calendar className="w-5 h-5" />,
-  },
-];
-
 export default function CustomNavbar(): React.JSX.Element {
   const pathname = usePathname();
   const router = useRouter();
@@ -68,6 +35,39 @@ export default function CustomNavbar(): React.JSX.Element {
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const { data: session } = useSession();
   const { isLoading } = useLoading();
+
+  const navItems: NavItem[] = [
+    {
+      name: 'Dashboard',
+      href: '/dashboard',
+      icon: <LayoutDashboard className="w-5 h-5" />,
+    },
+    {
+      name: 'Job listing',
+      href: '/job-listing',
+      icon: <Briefcase className="w-5 h-5" />,
+    },
+    {
+      name: 'Events',
+      href: '/events',
+      icon: <Ticket className="w-5 h-5" />, 
+    },
+    {
+      name: 'All applicants',
+      href: '/all-applicants',
+      icon: <Users className="w-5 h-5" />,
+    },
+    {
+      name: 'Organization',
+      href: '/organization',
+      icon: <Building2 className="w-5 h-5" />,
+    },
+    {
+      name: 'Schedule',
+      href: '/schedule',
+      icon: <Calendar className="w-5 h-5" />,
+    },
+  ];
 
   const handleNavigation = (href: string, name: string) => {
     setClickedItem(name);

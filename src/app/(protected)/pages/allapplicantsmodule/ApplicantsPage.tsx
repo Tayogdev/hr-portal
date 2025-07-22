@@ -76,7 +76,18 @@ export default function ApplicantsPage() {
               const applicantsData = await applicantsResponse.json();
               
               if (applicantsData.success && applicantsData.data?.applicants) {
-                const enhancedApplicants = applicantsData.data.applicants.map((applicant: Record<string, any>) => ({
+                const enhancedApplicants = applicantsData.data.applicants.map((applicant: {
+                  id: string;
+                  userId: string;
+                  name?: string;
+                  email?: string;
+                  appliedDate?: string;
+                  createdAt?: string;
+                  status: string;
+                  documents?: {
+                    summary?: Record<string, string>;
+                  };
+                }) => ({
                   id: applicant.id,
                   userId: applicant.userId,
                   name: applicant.name || 'Anonymous',

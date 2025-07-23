@@ -46,6 +46,12 @@ interface FormattedRegisteredUser {
   state?: string;
   country?: string;
   bookingStatus: string;
+  // Questionnaire data fields
+  firstName?: string;
+  lastName?: string;
+  gender?: string;
+  maritalStatus?: boolean;
+  zipCode?: string;
 }
 
 export async function GET(
@@ -111,13 +117,10 @@ export async function GET(
         userType = 'Foreign National';
       }
 
-      // Generate tags based on profession and organization
+      // Generate tags based on profession only (excluding organization name)
       const tags = [];
       if (user.profession) {
         tags.push(user.profession);
-      }
-      if (user.organizationName) {
-        tags.push(user.organizationName);
       }
 
       // Generate a score based on registration completeness (for demo purposes)
@@ -149,6 +152,12 @@ export async function GET(
         state: user.state || undefined,
         country: user.country || undefined,
         bookingStatus: user.bookingStatus,
+        // Questionnaire data fields
+        firstName: user.firstName || undefined,
+        lastName: user.lastName || undefined,
+        gender: user.gender || undefined,
+        maritalStatus: user.maritalStatus || undefined,
+        zipCode: user.zipCode || undefined,
       };
     });
 

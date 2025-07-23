@@ -81,30 +81,33 @@ export default function Header(): React.JSX.Element | null {
     if (eventDetailPathMatch) {
       const eventId = eventDetailPathMatch[1];
 
-      const fetchEventTitle = async () => {
-        try {
-          setLoadingEventTitle(true);
-          const res = await fetch(`/api/events/${eventId}`);
-          const result = await res.json();
+      // Only fetch if we don't already have the title for this event
+      if (currentEventTitle === null || !currentEventTitle.includes(eventId)) {
+        const fetchEventTitle = async () => {
+          try {
+            setLoadingEventTitle(true);
+            const res = await fetch(`/api/events/${eventId}`);
+            const result = await res.json();
 
-          if (res.ok && result.success && result.data?.title) {
-            setCurrentEventTitle(result.data.title);
-          } else {
+            if (res.ok && result.success && result.data?.title) {
+              setCurrentEventTitle(result.data.title);
+            } else {
+              setCurrentEventTitle('Event Details');
+            }
+          } catch {
             setCurrentEventTitle('Event Details');
+          } finally {
+            setLoadingEventTitle(false);
           }
-        } catch {
-          setCurrentEventTitle('Event Details');
-        } finally {
-          setLoadingEventTitle(false);
-        }
-      };
+        };
 
-      fetchEventTitle();
+        fetchEventTitle();
+      }
     } else {
       setCurrentEventTitle(null);
       setLoadingEventTitle(false);
     }
-  }, [pathname]);
+  }, [pathname, currentEventTitle]);
 
   // Reset loading state when pathname changes
   useEffect(() => {

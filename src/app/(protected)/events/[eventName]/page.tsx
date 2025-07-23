@@ -41,6 +41,15 @@ interface ApplicantProfile {
   state?: string; // Added state to ApplicantProfile
   country?: string; // Added country to ApplicantProfile
   bookingStatus?: string; // Added bookingStatus to ApplicantProfile
+  userId?: string; // Added userId for API calls
+  // Questionnaire data fields
+  firstName?: string;
+  lastName?: string;
+  gender?: string;
+  maritalStatus?: boolean;
+  profession?: string;
+  organizationName?: string;
+  zipCode?: string;
 }
 
 interface AssignTaskModalProps {
@@ -122,11 +131,27 @@ export default function EventPage() {
   const [isScheduleInterviewModalOpen, setIsScheduleInterviewModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<{ id: string; title: string; description: string; dueDate: string } | null>(null);
   const [editingInterview, setEditingInterview] = useState<{ id: string; date: string; time: string; interviewer: string; mode: string; link?: string; notes?: string } | null>(null);
-  const [activeSection, setActiveSection] = useState<'none' | 'profile' | 'resume' | 'contact' | 'files' | 'taskDetails' | 'interviewDetails'>('none');
+  const [activeSection, setActiveSection] = useState<'none' | 'profile' | 'resume' | 'contact' | 'files' | 'taskDetails' | 'interviewDetails' | 'applicantDetails'>('none');
 
   const [allRegistrations, setAllRegistrations] = useState<number>(0);
   const [finalAttendees, setFinalAttendees] = useState<number>(0);
   const [applicants, setApplicants] = useState<ApplicantProfile[]>([]);
+  const [questionnaireData, setQuestionnaireData] = useState<{
+    firstName: string | null;
+    lastName: string | null;
+    gender: string | null;
+    maritalStatus: boolean | null;
+    profession: string | null;
+    organizationName: string | null;
+    email: string | null;
+    phoneNo: string | null;
+    state: string | null;
+    country: string | null;
+    zipCode: string | null;
+    eventId: string;
+    userId: string;
+    lastUpdated?: string;
+  } | null>(null);
 
   const statusRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -181,6 +206,7 @@ export default function EventPage() {
           // Transform registered users to match ApplicantProfile interface
           const transformedApplicants: ApplicantProfile[] = registeredUsers.map((user: {
             id: string;
+            userId: string;
             name: string;
             email: string;
             image?: string;
@@ -196,8 +222,15 @@ export default function EventPage() {
             state?: string;
             country?: string;
             bookingStatus: string;
+            // Questionnaire data fields
+            firstName?: string;
+            lastName?: string;
+            gender?: string;
+            maritalStatus?: boolean;
+            zipCode?: string;
           }) => ({
             id: parseInt(user.id) || Math.random(),
+            userId: user.userId, // Add userId for API calls
             name: user.name,
             image: user.image || '/avatar-placeholder.png',
             type: user.type,
@@ -213,6 +246,13 @@ export default function EventPage() {
             phoneNo: user.phoneNo, // Add phoneNo
             state: user.state, // Add state
             country: user.country, // Add country
+            organizationName: user.organizationName, // Add organizationName
+            // Questionnaire data fields
+            firstName: user.firstName,
+            lastName: user.lastName,
+            gender: user.gender,
+            maritalStatus: user.maritalStatus,
+            zipCode: user.zipCode,
           }));
           
           setApplicants(transformedApplicants);
@@ -251,10 +291,35 @@ export default function EventPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+
+
   const handleApplicantSelection = (applicant: ApplicantProfile) => {
     setSelectedApplicant(applicant);
     setActiveSection("none"); // Reset active section when a new applicant is selected
+    // Set questionnaire data directly from applicant data
+    if (applicant.firstName || applicant.lastName || applicant.gender || applicant.maritalStatus !== undefined || applicant.zipCode) {
+      setQuestionnaireData({
+        firstName: applicant.firstName || null,
+        lastName: applicant.lastName || null,
+        gender: applicant.gender || null,
+        maritalStatus: applicant.maritalStatus ?? null,
+        profession: applicant.profession || null,
+        organizationName: applicant.organizationName || null,
+        email: applicant.email || null,
+        phoneNo: applicant.phoneNo || null,
+        state: applicant.state || null,
+        country: applicant.country || null,
+        zipCode: applicant.zipCode || null,
+        eventId: eventId,
+        userId: applicant.userId || applicant.id.toString(),
+        lastUpdated: new Date().toISOString(),
+      });
+    } else {
+      setQuestionnaireData(null);
+    }
   };
+
+
 
   const getFilteredApplicants = (filterType: string) => {
     if (filterType === 'All') return applicants;
@@ -544,19 +609,8 @@ export default function EventPage() {
                         </span>
                       ))}
                     </div>
-                    <div className="mt-2 flex justify-between text-sm text-gray-500">
+                    <div className="mt-2 text-sm text-gray-500">
                       <span>Applied {applicant.appliedDate || 'N/A'}</span>
-                      <span
-                        className={`font-semibold ${
-                          applicant.score >= 8
-                            ? 'text-green-600'
-                            : applicant.score >= 6
-                            ? 'text-yellow-600'
-                            : 'text-gray-600'
-                        }`}
-                      >
-                        Score: {applicant.score}
-                      </span>
                     </div>
                     <div className="mt-1">
                       <span
@@ -623,8 +677,6 @@ export default function EventPage() {
             Profile
           </button>
 
-        
-
           <button
             className={`border border-gray-300 px-5 py-2 rounded-full text-sm transition ${
               activeSection === 'contact' ? 'text-gray-900' : 'text-gray-700 hover:bg-gray-100'
@@ -634,34 +686,46 @@ export default function EventPage() {
             Contacts
           </button>
 
+          <button
+            className={`border border-gray-300 px-5 py-2 rounded-full text-sm transition ${
+              activeSection === 'applicantDetails' ? 'text-gray-900' : 'text-gray-700 hover:bg-gray-100'
+            }`}
+            onClick={() => setActiveSection('applicantDetails')}
+          >
+            Applicant Details
+          </button>
+
         </div>
       </div>
 
       {/* Second Detail Box (Dynamic) */}
       {activeSection !== 'none' && (
-        <div className=" rounded-2xl  px-6 py-6 mt-6 max-w-3xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-xs px-6 py-6 mt-6 max-w-3xl mx-auto">
          {activeSection === 'profile' && (
           <>
-    {/* Education Box */}
-        <div className="bg-white rounded-2xl shadow-xs px-6 py-6 mt-6 max-w-3xl mx-auto">
-      <h3 className="text-lg font-semibold mb-2">Profile Information</h3>
+    {/* Profile Information */}
+        <div className="mb-6">
+      <h3 className="text-lg font-semibold mb-4">Profile Information</h3>
+      <div className="space-y-3">
       <p className="text-sm text-gray-700">Email: {selectedApplicant.email || 'No email provided'}</p>
       <p className="text-sm text-gray-700">Profession: {selectedApplicant.title || 'Not specified'}</p>
-      <p className="text-sm text-gray-700">Organization: {selectedApplicant.tags?.find(tag => tag !== selectedApplicant.title) || 'Not specified'}</p>
+        <p className="text-sm text-gray-700">Organization: {selectedApplicant.organizationName || 'Not specified'}</p>
       <p className="text-sm text-gray-700">Type: {selectedApplicant.type}</p>
+      </div>
     </div>
 
-    {/* Registration Details Box */}
-    <div className="bg-white rounded-2xl shadow-xs px-6 py-6 mt-6 max-w-3xl mx-auto">
-      <h3 className="text-lg font-semibold mb-2">Registration Details</h3>
+    {/* Registration Details */}
+    <div className="mb-6">
+      <h3 className="text-lg font-semibold mb-4">Registration Details</h3>
+      <div className="space-y-3">
       <p className="text-sm text-gray-700">Registration Date: {selectedApplicant.appliedDate}</p>
       <p className="text-sm text-gray-700">Status: {selectedApplicant.status}</p>
-      <p className="text-sm text-gray-700">Score: {selectedApplicant.score}/10</p>
+      </div>
     </div>
 
-    {/* Skills/Tags Box */}
-    <div className="bg-white rounded-2xl shadow-xs px-6 py-6 mt-6 max-w-3xl mx-auto">
-      <h3 className="text-lg font-semibold mb-2">Skills & Tags</h3>
+    {/* Skills/Tags */}
+    <div>
+      <h3 className="text-lg font-semibold mb-4">Skills & Tags</h3>
       <div className="flex flex-wrap gap-2">
         {selectedApplicant.tags && selectedApplicant.tags.length > 0 ? (
           selectedApplicant.tags.map((tag, idx) => (
@@ -679,12 +743,122 @@ export default function EventPage() {
 
 
           {activeSection === 'contact' && (
-             <div className="bg-white rounded-2xl shadow-xs px-6 py-6 mt-6 max-w-3xl mx-auto">
-        <h3 className="text-lg font-semibold mb-2">Contact Details</h3>
+             <div>
+        <h3 className="text-lg font-semibold mb-4">Contact Details</h3>
+        <div className="space-y-3">
         <p className="text-sm text-gray-700">Email: {selectedApplicant.email || 'No email provided'}</p>
         <p className="text-sm text-gray-700">Phone: {selectedApplicant.phoneNo || 'No phone provided'}</p>
         <p className="text-sm text-gray-700">State: {selectedApplicant.state || 'Not specified'}</p>
         <p className="text-sm text-gray-700">Country: {selectedApplicant.country || 'Not specified'}</p>
+        </div>
+      </div>
+          )}
+
+          {activeSection === 'applicantDetails' && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Applicant Details</h3>
+                <div className="flex items-center gap-2">
+                  {questionnaireData && (
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                      Last updated: {new Date(questionnaireData.lastUpdated || Date.now()).toLocaleTimeString()}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => selectedApplicant && handleApplicantSelection(selectedApplicant)}
+                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                    title="Refresh data"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              {questionnaireData ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                      <input
+                        type="text"
+                        value={questionnaireData.firstName || ''}
+                        readOnly
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Enter first name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                      <input
+                        type="text"
+                        value={questionnaireData.lastName || ''}
+                        readOnly
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Enter last name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                      <select
+                        value={questionnaireData.gender || 'Prefer not to say'}
+                        disabled
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                        <option value="Prefer not to say">Prefer not to say</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Marital Status</label>
+                      <select
+                        value={questionnaireData.maritalStatus === true ? 'Married' : questionnaireData.maritalStatus === false ? 'Single' : 'Prefer not to say'}
+                        disabled
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="Single">Single</option>
+                        <option value="Married">Married</option>
+                        <option value="Divorced">Divorced</option>
+                        <option value="Widowed">Widowed</option>
+                        <option value="Prefer not to say">Prefer not to say</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Associated Institute/Company Name</label>
+                      <input
+                        type="text"
+                        value={questionnaireData.organizationName || ''}
+                        readOnly
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Enter institute or company name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Institute/Company ID Number</label>
+                      <input
+                        type="text"
+                        value={questionnaireData.zipCode || ''}
+                        readOnly
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Enter ID number"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-500 mb-2">No applicant details available</p>
+                  <p className="text-sm text-gray-400">The applicant hasn&apos;t filled out their details yet.</p>
+                </div>
+              )}
       </div>
           )}
 

@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
 import { useLoading } from '@/components/LoadingProvider';
+import { usePageContext } from '@/components/PageContext';
 
 import {
   LayoutDashboard,
@@ -35,6 +36,7 @@ export default function CustomNavbar(): React.JSX.Element {
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const { data: session } = useSession();
   const { isLoading } = useLoading();
+  const { selectedPageId, clearSelectedPage } = usePageContext();
 
   const navItems: NavItem[] = [
     {
@@ -75,9 +77,21 @@ export default function CustomNavbar(): React.JSX.Element {
     
     // Add a small delay to show loading state
     setTimeout(() => {
-      router.push(href);
+      // Add pageId to URL if available for job listing and events
+      let finalHref = href;
+      if ((href === '/job-listing' || href === '/events') && selectedPageId) {
+        finalHref = `${href}?pageId=${selectedPageId}`;
+      }
+      
+      router.push(finalHref);
       setClickedItem(null);
     }, 100);
+  };
+
+  const handleLogout = () => {
+    // Clear the selected page before logging out
+    clearSelectedPage();
+    signOut({ callbackUrl: '/login' });
   };
 
   return (
@@ -182,7 +196,7 @@ export default function CustomNavbar(): React.JSX.Element {
 
           {/* Logout */}
           <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
+            onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors"
           >
             <LogOut className="w-4 h-4" />

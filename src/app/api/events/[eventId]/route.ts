@@ -108,4 +108,160 @@ export async function GET(
       error: error instanceof Error ? error.message : String(error)
     }, { status: 500 });
   }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ eventId: string }> }
+) {
+  try {
+    const { userId } = await validateAPIRouteAndGetUserId(request);
+    const { eventId } = await params;
+
+    if (!eventId) {
+      return NextResponse.json({
+        success: false,
+        message: 'Event ID is required'
+      }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const {
+      title,
+      description,
+      startDate,
+      endDate,
+      regStartDate,
+      regEndDate,
+      website,
+      email,
+      contact
+    } = body;
+
+    // Validate required fields
+    if (!title || !startDate || !endDate || !regStartDate || !regEndDate) {
+      return NextResponse.json({
+        success: false,
+        message: 'Event title and all dates are required'
+      }, { status: 400 });
+    }
+
+    // Validate date logic
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const regStart = new Date(regStartDate);
+    const regEnd = new Date(regEndDate);
+
+    // Registration should start before it ends
+    if (regStart >= regEnd) {
+      return NextResponse.json({
+        success: false,
+        message: 'Registration start date must be before registration end date'
+      }, { status: 400 });
+    }
+
+    // Event should start before it ends
+    if (start >= end) {
+      return NextResponse.json({
+        success: false,
+        message: 'Event start date must be before event end date'
+      }, { status: 400 });
+    }
+
+    // Registration should start before event ends (allow registration during event)
+    if (regStart >= end) {
+      return NextResponse.json({
+        success: false,
+        message: 'Registration should start before the event ends'
+      }, { status: 400 });
+    }
+
+    // Check if user is the page owner for this event
+    const ownershipQuery = `
+      SELECT 
+        po."pageId",
+        po."userId",
+        po.role as ownership_role,
+        po."isActive" as is_active
+      FROM events e
+      INNER JOIN "pageOwnership" po ON e."publishedBy" = po."pageId"
+      WHERE e.id = $1 AND po."userId" = $2 AND po."isActive" = true
+    `;
+    
+    const ownershipResult = await pool.query(ownershipQuery, [eventId, userId]);
+    console.log('PUT event ownership check result:', ownershipResult.rows);
+    
+    if (ownershipResult.rows.length === 0) {
+      return NextResponse.json({
+        success: false,
+        message: 'You do not have permission to edit this event'
+      }, { status: 403 });
+    }
+
+    // Update the event with date fields
+    const updateQuery = `
+      UPDATE events
+      SET 
+        title = $1,
+        description = $2,
+        "startDate" = $3,
+        "endDate" = $4,
+        "regStartDate" = $5,
+        "regEndDate" = $6,
+        website = $7,
+        email = $8,
+        contact = $9,
+        "updatedAt" = NOW()
+      WHERE id = $10
+      RETURNING *
+    `;
+
+    const updateResult = await pool.query(updateQuery, [
+      title,
+      description || '',
+      startDate,
+      endDate,
+      regStartDate,
+      regEndDate,
+      website || null,
+      email || null,
+      contact || null,
+      eventId
+    ]);
+
+    if (updateResult.rows.length === 0) {
+      return NextResponse.json({
+        success: false,
+        message: 'Event not found'
+      }, { status: 404 });
+    }
+
+    const updatedEvent = updateResult.rows[0];
+
+    return NextResponse.json({
+      success: true,
+      message: 'Event updated successfully',
+      data: {
+        id: updatedEvent.id,
+        title: updatedEvent.title,
+        description: updatedEvent.description,
+        startDate: updatedEvent.startDate,
+        endDate: updatedEvent.endDate,
+        regStartDate: updatedEvent.regStartDate,
+        regEndDate: updatedEvent.regEndDate,
+        website: updatedEvent.website,
+        email: updatedEvent.email,
+        contact: updatedEvent.contact,
+        updatedAt: updatedEvent.updatedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Error updating event:', error);
+    return NextResponse.json({
+      success: false,
+      message: 'Failed to update event',
+      error: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
+  }
 } 

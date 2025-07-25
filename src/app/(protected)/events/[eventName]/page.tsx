@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import { Share2, Filter } from 'lucide-react'; // Added Pencil for the edit icons
 import { Button } from '../../../../components/ui/button';
+import EditEventModal from '../../../../components/EditEventModal';
 
 // Assuming these are available as separate components in your project
 // You'll need to define these components (AssignTaskModal, ScheduleInterviewModal)
@@ -19,7 +20,7 @@ interface ApplicantProfile {
   tags: string[];
   appliedDate: string;
   score: number;
-  status: 'SHORTLISTED' | 'FINAL' | 'REJECTED' | 'PENDING';
+  status: 'SHORTLISTED' | 'FINAL' | 'REJECTED' | 'PENDING' | 'APPROVED' | 'DECLINED';
   assignedTask?: {
     id: string;
     title: string;
@@ -112,7 +113,7 @@ export default function EventPage() {
   const [jobStatus, setJobStatus] = useState<'Live' | 'Closed'>('Live');
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [jobMenuOpen, setJobMenuOpen] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<'all' | 'final'>('all');
+  const [selectedTab, setSelectedTab] = useState<'all' | 'final' | 'approved' | 'declined'>('all');
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
   const [selectedApplicant, setSelectedApplicant] = useState<ApplicantProfile | null>(null);
   const [eventDetails, setEventDetails] = useState<{
@@ -122,9 +123,20 @@ export default function EventPage() {
     isOnline: boolean;
     createdAt: string;
     regEndDate: string;
+    description: string;
+    startDate: string;
+    endDate: string;
+    regStartDate: string;
+    seat: number;
+    price: number;
+    website?: string;
+    email?: string;
+    contact?: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPageOwner, setIsPageOwner] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // States for Modals
   const [isAssignTaskModalOpen, setIsAssignTaskModalOpen] = useState(false);
@@ -135,6 +147,8 @@ export default function EventPage() {
 
   const [allRegistrations, setAllRegistrations] = useState<number>(0);
   const [finalAttendees, setFinalAttendees] = useState<number>(0);
+  const [approvedApplicants, setApprovedApplicants] = useState<number>(0);
+  const [declinedApplicants, setDeclinedApplicants] = useState<number>(0);
   const [applicants, setApplicants] = useState<ApplicantProfile[]>([]);
   const [questionnaireData, setQuestionnaireData] = useState<{
     firstName: string | null;
@@ -178,6 +192,15 @@ export default function EventPage() {
             isOnline: event.isOnline,
             createdAt: event.createdAt,
             regEndDate: event.regEndDate,
+            description: event.description || '',
+            startDate: event.startDate || '',
+            endDate: event.endDate || '',
+            regStartDate: event.regStartDate || '',
+            seat: event.seat || 0,
+            price: event.price || 0,
+            website: event.website || '',
+            email: event.email || '',
+            contact: event.contact || '',
           });
         } else {
           // Fallback to static data if event not found
@@ -188,6 +211,15 @@ export default function EventPage() {
             isOnline: true,
             createdAt: new Date().toISOString(),
             regEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            description: '',
+            startDate: '',
+            endDate: '',
+            regStartDate: '',
+            seat: 0,
+            price: 0,
+            website: '',
+            email: '',
+            contact: '',
           });
         }
         
@@ -238,7 +270,7 @@ export default function EventPage() {
             tags: user.tags || [],
             appliedDate: user.appliedDate,
             score: user.score || 5,
-            status: user.bookingStatus === 'SUCCESS' ? 'FINAL' : 'PENDING', // Use booking status to determine status
+            status: user.bookingStatus === 'SUCCESS' ? 'FINAL' : user.bookingStatus === 'SHORTLISTED' ? 'SHORTLISTED' : user.bookingStatus === 'REJECTED' ? 'REJECTED' : 'PENDING', // Use booking status to determine status
             assignedTask: undefined, // You can add task assignment logic later
             scheduledInterview: undefined, // You can add interview scheduling logic later
             resumePath: undefined, // You can add resume upload logic later
@@ -275,6 +307,29 @@ export default function EventPage() {
     };
 
     fetchEventData();
+  }, [eventId]);
+
+  // Check page ownership for this event
+  useEffect(() => {
+    const checkPageOwnership = async () => {
+      if (!eventId) return;
+      
+      try {
+        const ownershipResponse = await fetch(`/api/events/${eventId}/ownership`);
+        const ownershipData = await ownershipResponse.json();
+        
+        if (ownershipData.success) {
+          setIsPageOwner(ownershipData.data.isOwner);
+        } else {
+          setIsPageOwner(false);
+        }
+      } catch (err) {
+        console.error('Error checking page ownership:', err);
+        setIsPageOwner(false);
+      }
+    };
+
+    checkPageOwnership();
   }, [eventId]);
 
   useEffect(() => {
@@ -326,6 +381,21 @@ export default function EventPage() {
     return applicants.filter((app) => app.type === filterType);
   };
 
+  const getTabFilteredApplicants = () => {
+    switch (selectedTab) {
+      case 'all':
+        return applicants;
+      case 'final':
+        return applicants.filter(app => app.status === 'FINAL');
+              case 'approved':
+          return applicants.filter(app => app.status === 'SHORTLISTED');
+        case 'declined':
+          return applicants.filter(app => app.status === 'REJECTED');
+      default:
+        return applicants;
+    }
+  };
+
   const filterCounts = {
     All: applicants.length,
     Student: getFilteredApplicants('Student').length,
@@ -333,13 +403,24 @@ export default function EventPage() {
     'Foreign National': getFilteredApplicants('Foreign National')?.length || 0,
   };
 
+  // Update counts when applicants change
+  useEffect(() => {
+    setAllRegistrations(applicants.length);
+    setFinalAttendees(applicants.filter(app => app.status === 'FINAL').length);
+    setApprovedApplicants(applicants.filter(app => app.status === 'SHORTLISTED').length);
+    setDeclinedApplicants(applicants.filter(app => app.status === 'REJECTED').length);
+  }, [applicants]);
+
   const tabs = [
     { id: 'all', label: `All Registrations (${allRegistrations})` },
+    { id: 'approved', label: `Approved (${approvedApplicants})` },
+    { id: 'declined', label: `Declined (${declinedApplicants})` },
     { id: 'final', label: `Final Attendees (${finalAttendees})` },
   ];
 
   const filters = ['All', 'Student', 'Professional', 'Foreign National'];
-  const filteredApplicants = getFilteredApplicants(selectedFilter);
+  const tabFilteredApplicants = getTabFilteredApplicants();
+  const filteredApplicants = selectedTab === 'all' ? getFilteredApplicants(selectedFilter) : tabFilteredApplicants;
 
   // Dummy functions for modal actions - replace with actual logic
   const handleAssignTask = (taskDetails: { title: string; description: string; dueDate: string }) => {
@@ -380,6 +461,140 @@ export default function EventPage() {
   const handleCloseInterviewModal = () => {
     setIsScheduleInterviewModalOpen(false);
     setEditingInterview(null);
+  };
+
+  const handleApproveApplicant = async (applicantId: string) => {
+    if (!selectedApplicant) return;
+    
+    try {
+      const response = await fetch(`/api/events/${eventId}/applicants/${applicantId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'APPROVED' }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Update local state
+        setApplicants(prev => 
+          prev.map(applicant => 
+            applicant.id.toString() === applicantId 
+              ? { ...applicant, status: 'SHORTLISTED' as const }
+              : applicant
+          )
+        );
+        
+        // Update selected applicant if it's the current one
+        if (selectedApplicant.id.toString() === applicantId) {
+          setSelectedApplicant(prev => prev ? { ...prev, status: 'SHORTLISTED' as const } : null);
+        }
+        
+        alert('Applicant approved successfully! Email notification sent.');
+      } else {
+        alert('Failed to approve applicant: ' + result.message);
+      }
+    } catch (error) {
+      console.error('Error approving applicant:', error);
+      alert('Failed to approve applicant. Please try again.');
+    }
+  };
+
+  const handleDeclineApplicant = async (applicantId: string) => {
+    if (!selectedApplicant) return;
+    
+    try {
+      const response = await fetch(`/api/events/${eventId}/applicants/${applicantId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'DECLINED' }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Update local state
+        setApplicants(prev => 
+          prev.map(applicant => 
+            applicant.id.toString() === applicantId 
+              ? { ...applicant, status: 'REJECTED' as const }
+              : applicant
+          )
+        );
+        
+        // Update selected applicant if it's the current one
+        if (selectedApplicant.id.toString() === applicantId) {
+          setSelectedApplicant(prev => prev ? { ...prev, status: 'REJECTED' as const } : null);
+        }
+        
+        alert('Applicant declined successfully! Email notification sent.');
+      } else {
+        alert('Failed to decline applicant: ' + result.message);
+      }
+    } catch (error) {
+      console.error('Error declining applicant:', error);
+      alert('Failed to decline applicant. Please try again.');
+    }
+  };
+
+  const handleEditEvent = () => {
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEvent = async (updatedData: {
+    id: string;
+    title: string;
+    description: string;
+    startDate: string;
+    endDate: string;
+    regStartDate: string;
+    regEndDate: string;
+    website?: string;
+    email?: string;
+    contact?: string;
+  }) => {
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          // Update only the fields that were edited
+          setEventDetails(prev => prev ? {
+            ...prev,
+            title: updatedData.title,
+            description: updatedData.description,
+            startDate: updatedData.startDate,
+            endDate: updatedData.endDate,
+            regStartDate: updatedData.regStartDate,
+            regEndDate: updatedData.regEndDate,
+            website: updatedData.website,
+            email: updatedData.email,
+            contact: updatedData.contact,
+          } : null);
+          
+          alert('Event updated successfully!');
+        } else {
+          alert(`Failed to update event: ${result.message}`);
+        }
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to update event: ${errorData.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error updating event:', error);
+      alert('Failed to update event. Please try again.');
+    }
   };
 
 
@@ -477,19 +692,25 @@ export default function EventPage() {
             <Share2 className="w-5 h-5" />
           </Button>
 
-          <div className="relative" ref={menuRef}>
-            <button className="p-2 hover:bg-gray-100 rounded-full" onClick={() => setJobMenuOpen(!jobMenuOpen)}>
-              <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 13a1 1 0 100-2 1 1 0 000 2zM19 13a1 1 0 100-2 1 1 0 000 2zM5 13a1 1 0 100-2 1 1 0 000 2z" />
-              </svg>
-            </button>
-            {jobMenuOpen && (
-              <div className="absolute right-0 mt-1 bg-white border rounded shadow z-10 w-40">
-                    <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">Edit Event</button>
-                    <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">Delete Event</button>
-              </div>
-            )}
-          </div>
+          {isPageOwner && (
+            <div className="relative" ref={menuRef}>
+              <button className="p-2 hover:bg-gray-100 rounded-full" onClick={() => setJobMenuOpen(!jobMenuOpen)}>
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 13a1 1 0 100-2 1 1 0 000 2zM19 13a1 1 0 100-2 1 1 0 000 2zM5 13a1 1 0 100-2 1 1 0 000 2z" />
+                </svg>
+              </button>
+              {jobMenuOpen && (
+                <div className="absolute right-0 mt-1 bg-white border rounded shadow z-10 w-40">
+                  <button 
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                    onClick={handleEditEvent}
+                  >
+                    Edit Event
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
         </>
@@ -501,7 +722,7 @@ export default function EventPage() {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setSelectedTab(tab.id as 'all' | 'final')}
+              onClick={() => setSelectedTab(tab.id as 'all' | 'final' | 'approved' | 'declined')}
               className={`py-2 md:py-4 px-1 relative ${
                 selectedTab === tab.id ? 'text-[#6366F1] font-medium' : 'text-black'
               }`}
@@ -615,16 +836,16 @@ export default function EventPage() {
                     <div className="mt-1">
                       <span
                         className={`inline-block px-2 py-1 text-xs rounded-full ${
-                          applicant.status === 'SHORTLISTED'
-                            ? 'bg-blue-100 text-blue-800'
-                            : applicant.status === 'FINAL'
+                          applicant.status === 'FINAL'
                             ? 'bg-green-100 text-green-800'
+                            : applicant.status === 'SHORTLISTED'
+                            ? 'bg-blue-100 text-blue-800'
                             : applicant.status === 'REJECTED'
                             ? 'bg-red-100 text-red-800'
                             : 'bg-gray-100 text-gray-800'
                         }`}
                       >
-                        {applicant.status || 'PENDING'}
+                        {applicant.status}
                       </span>
                     </div>
                   </div>
@@ -654,22 +875,24 @@ export default function EventPage() {
         </div>
 
         {/* Applicant Info */}
-        <h2 className="text-2xl font-bold text-gray-900 mb-1">{selectedApplicant.name}</h2>
-        <p className="text-sm text-gray-700 mb-4">
-          {selectedApplicant.title || selectedApplicant.type}, Pursuing Bachelors of Design from IIT Hyderabad
-        </p>
+        <div className="mb-4">
+          <h2 className="text-2xl font-bold text-gray-900 mb-1">{selectedApplicant.name}</h2>
+          <p className="text-sm text-gray-700 mb-2">
+            {selectedApplicant.title || selectedApplicant.type}, Pursuing Bachelors of Design from IIT Hyderabad
+          </p>
 
-        {/* Tags */}
-        <div className="text-blue-600 text-sm font-medium flex flex-wrap justify-start gap-x-2 gap-y-1 mb-6">
-          {selectedApplicant.tags?.map((tag, idx) => (
-            <span key={idx} className="cursor-pointer hover:underline">{tag}</span>
-          ))}
+          {/* Tags */}
+          <div className="text-blue-600 text-sm font-medium flex flex-wrap justify-start gap-x-2 gap-y-1 mb-4">
+            {selectedApplicant.tags?.map((tag, idx) => (
+              <span key={idx} className="cursor-pointer hover:underline">{tag}</span>
+            ))}
+          </div>
         </div>
 
-        {/* Navigation Buttons */}
-        <div className="flex flex-wrap gap-3">
+        {/* Navigation and Action Buttons */}
+        <div className="flex flex-wrap gap-2 mb-6">
           <button
-            className={`border border-gray-300 px-5 py-2 rounded-full text-sm transition ${
+            className={`border border-gray-300 px-4 py-2 rounded-full text-sm transition ${
               activeSection === 'profile' ? 'text-gray-900' : 'text-gray-700 hover:bg-gray-100'
             }`}
             onClick={() => setActiveSection('profile')}
@@ -678,7 +901,7 @@ export default function EventPage() {
           </button>
 
           <button
-            className={`border border-gray-300 px-5 py-2 rounded-full text-sm transition ${
+            className={`border border-gray-300 px-4 py-2 rounded-full text-sm transition ${
               activeSection === 'contact' ? 'text-gray-900' : 'text-gray-700 hover:bg-gray-100'
             }`}
             onClick={() => setActiveSection('contact')}
@@ -687,7 +910,7 @@ export default function EventPage() {
           </button>
 
           <button
-            className={`border border-gray-300 px-5 py-2 rounded-full text-sm transition ${
+            className={`border border-gray-300 px-4 py-2 rounded-full text-sm transition ${
               activeSection === 'applicantDetails' ? 'text-gray-900' : 'text-gray-700 hover:bg-gray-100'
             }`}
             onClick={() => setActiveSection('applicantDetails')}
@@ -695,6 +918,29 @@ export default function EventPage() {
             Applicant Details
           </button>
 
+          <button
+            onClick={() => handleDeclineApplicant(selectedApplicant.id.toString())}
+            disabled={selectedApplicant.status === 'REJECTED'}
+            className={`border border-gray-300 px-4 py-2 rounded-full text-sm transition ${
+              selectedApplicant.status === 'REJECTED'
+                ? 'bg-red-50 text-red-600 border-red-200 cursor-not-allowed'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            {selectedApplicant.status === 'REJECTED' ? 'Declined' : 'Decline'}
+          </button>
+          
+          <button
+            onClick={() => handleApproveApplicant(selectedApplicant.id.toString())}
+            disabled={selectedApplicant.status === 'SHORTLISTED'}
+            className={`border border-gray-300 px-4 py-2 rounded-full text-sm transition ${
+              selectedApplicant.status === 'SHORTLISTED'
+                ? 'bg-green-50 text-green-600 border-green-200 cursor-not-allowed'
+                : 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+            }`}
+          >
+            {selectedApplicant.status === 'SHORTLISTED' ? 'Approved' : 'Approve'}
+          </button>
         </div>
       </div>
 
@@ -915,6 +1161,24 @@ export default function EventPage() {
         selectedApplicantName={selectedApplicant?.name}
         onScheduleInterview={handleScheduleInterview}
         editingInterview={editingInterview}
+      />
+
+      <EditEventModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        eventData={eventDetails ? {
+          id: eventDetails.id,
+          title: eventDetails.title,
+          description: eventDetails.description,
+          startDate: eventDetails.startDate,
+          endDate: eventDetails.endDate,
+          regStartDate: eventDetails.regStartDate,
+          regEndDate: eventDetails.regEndDate,
+          website: eventDetails.website,
+          email: eventDetails.email,
+          contact: eventDetails.contact
+        } : null}
+        onSave={handleSaveEvent}
       />
     </div>
   );

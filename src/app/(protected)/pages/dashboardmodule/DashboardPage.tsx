@@ -13,9 +13,11 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { usePageContext } from '@/components/PageContext';
 
 export default function DashboardPage(): React.JSX.Element {
   const router = useRouter();
+  const { selectedPageId } = usePageContext();
 
   // Mock data for dashboard - in production this would come from API
   const stats = [
@@ -124,7 +126,15 @@ export default function DashboardPage(): React.JSX.Element {
         {stats.map((stat, index) => (
           <div 
             key={index}
-            onClick={() => router.push(stat.href)}
+            onClick={() => {
+              let href = stat.href;
+              if (stat.href === '/job-listing' && selectedPageId) {
+                href = `/job-listing?pageId=${selectedPageId}`;
+              } else if (stat.href === '/events' && selectedPageId) {
+                href = `/events?pageId=${selectedPageId}`;
+              }
+              router.push(href);
+            }}
             className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
           >
             <div className="flex items-center justify-between">
@@ -151,7 +161,15 @@ export default function DashboardPage(): React.JSX.Element {
           {quickActions.map((action, index) => (
             <button
               key={index}
-              onClick={() => router.push(action.href)}
+              onClick={() => {
+                let href = action.href;
+                if (action.href === '/job-listing' && selectedPageId) {
+                  href = `/job-listing?pageId=${selectedPageId}`;
+                } else if (action.href === '/events' && selectedPageId) {
+                  href = `/events?pageId=${selectedPageId}`;
+                }
+                router.push(href);
+              }}
               className={`${action.color} text-white p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 text-left`}
             >
               <div className="flex items-center mb-2">

@@ -82,7 +82,6 @@ export interface OpportunityDetails {
   id: string;
   role?: string;
   title?: string;
-  institute?: string;
   department?: string;
   location?: string;
   stipend?: string;
@@ -91,6 +90,16 @@ export interface OpportunityDetails {
   regEndDate: string;
   maxParticipants: number;
   vacancies: number;
+  publishedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  publishedType?: string;
+  createdByUser?: string;
+  pageId?: string;
+  acceptCondition?: boolean;
+  clicks?: number;
+  haveDetails?: boolean;
+  isTermsAccept?: boolean;
 }
 
 export interface ApplicantsApiResponse {

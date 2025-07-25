@@ -7,6 +7,7 @@ import { Share2, SlidersHorizontal, Pencil } from "lucide-react";
 import { useParams } from "next/navigation";
 import { AssignTaskModal } from "./AssignTaskModal";
 import { ScheduleInterviewModal } from "./ScheduleInterviewModal";
+import EditOpportunityModal from "../../../../components/EditOpportunityModal";
 import { format } from "date-fns";
 import {
   ApplicantProfile,
@@ -70,6 +71,8 @@ export default function JobDetailPage() {
   const [jobMenuOpen, setJobMenuOpen] = useState(false); // ⬅ separate state for the 3-dot job menu
 
   const [activeSection, setActiveSection] = useState<Section>("none");
+  const [isPageOwner, setIsPageOwner] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
 
   const handleUpdateStatus = async (status: "REJECTED" | "MAYBE" | "SHORTLISTED") => {
@@ -198,6 +201,64 @@ export default function JobDetailPage() {
     setIsScheduleInterviewModalOpen(false);
     setEditingInterview(null);
   };
+
+  const handleEditOpportunity = () => {
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveOpportunity = async (updatedData: {
+    id: string;
+    role: string;
+    title: string;
+    department: string;
+    location: string;
+    description: string;
+    stipend: string;
+    vacancies: number;
+    maxParticipants: number;
+    regStartDate: string;
+    regEndDate: string;
+  }) => {
+    try {
+      const response = await fetch(`/api/opportunities/${jobId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          // Update the opportunity details in local state
+          setOpportunity(prev => prev ? {
+            ...prev,
+            role: updatedData.role,
+            title: updatedData.title,
+            department: updatedData.department,
+            location: updatedData.location,
+            description: updatedData.description,
+            stipend: updatedData.stipend,
+            vacancies: updatedData.vacancies,
+            maxParticipants: updatedData.maxParticipants,
+            regStartDate: updatedData.regStartDate,
+            regEndDate: updatedData.regEndDate,
+          } : null);
+          
+          alert('Job opportunity updated successfully!');
+        } else {
+          alert(`Failed to update job opportunity: ${result.message}`);
+        }
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to update job opportunity: ${errorData.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error updating job opportunity:', error);
+      alert('Failed to update job opportunity. Please try again.');
+    }
+  };
   const statusRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -209,6 +270,24 @@ export default function JobDetailPage() {
       try {
         setLoading(true);
         setError(null);
+
+        // Fetch complete opportunity details
+        const opportunityResponse = await fetch(`/api/opportunities/${jobId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        });
+
+        if (opportunityResponse.ok) {
+          const opportunityData = await opportunityResponse.json();
+          if (opportunityData.success) {
+            console.log('Fetched opportunity data:', opportunityData.data);
+            setOpportunity(opportunityData.data);
+          }
+        }
+
         const response = await fetch(`/api/opportunities/${jobId}/applicants?page=1&limit=50`, {
           method: 'GET',
           headers: {
@@ -292,7 +371,6 @@ export default function JobDetailPage() {
           );
           
           setApplicants(enhancedApplicants);
-          setOpportunity(data.data.opportunity);
         } else {
           throw new Error(data.message || 'Failed to fetch applicants');
         }
@@ -305,6 +383,29 @@ export default function JobDetailPage() {
     };
 
     fetchApplicantsData();
+  }, [jobId]);
+
+  // Check page ownership for this opportunity
+  useEffect(() => {
+    const checkPageOwnership = async () => {
+      if (!jobId) return;
+      
+      try {
+        const ownershipResponse = await fetch(`/api/opportunities/${jobId}/ownership`);
+        const ownershipData = await ownershipResponse.json();
+        
+        if (ownershipData.success) {
+          setIsPageOwner(ownershipData.data.isOwner);
+        } else {
+          setIsPageOwner(false);
+        }
+      } catch (err) {
+        console.error('Error checking page ownership:', err);
+        setIsPageOwner(false);
+      }
+    };
+
+    checkPageOwnership();
   }, [jobId]);
 
   useEffect(() => {
@@ -604,7 +705,7 @@ export default function JobDetailPage() {
               {opportunity?.role || opportunity?.title || "Job Opportunity"}
             </h1>
             <p className="text-sm text-gray-500">
-              {opportunity?.institute || "Company"} • {opportunity?.location || "Remote"} •
+              {opportunity?.department || "Company"} • {opportunity?.location || "Remote"} •
               Needs {opportunity?.vacancies || 0}/{opportunity?.maxParticipants || 0}
             </p>
             <p className="text-sm text-gray-500">
@@ -670,27 +771,29 @@ export default function JobDetailPage() {
           </Button>
 
 
-          <div className="relative" ref={menuRef}>
-  <button
-    className="p-2 hover:bg-gray-100 rounded-full"
-    onClick={() => setJobMenuOpen(!jobMenuOpen)}
-  >
-    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 13a1 1 0 100-2 1 1 0 000 2zM19 13a1 1 0 100-2 1 1 0 000 2zM5 13a1 1 0 100-2 1 1 0 000 2z" />
-    </svg>
-  </button>
+          {isPageOwner && (
+            <div className="relative" ref={menuRef}>
+              <button
+                className="p-2 hover:bg-gray-100 rounded-full"
+                onClick={() => setJobMenuOpen(!jobMenuOpen)}
+              >
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 13a1 1 0 100-2 1 1 0 000 2zM19 13a1 1 0 100-2 1 1 0 000 2zM5 13a1 1 0 100-2 1 1 0 000 2z" />
+                </svg>
+              </button>
 
-  {jobMenuOpen && (
-    <div className="absolute right-0 mt-1 bg-white border rounded shadow z-10 w-40">
-      <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">
-        Edit Job
-      </button>
-      <button className="block w-full text-left px-4 py-2 hover:bg-gray-100">
-        Delete Job
-      </button>
-    </div>
-  )}
-</div>
+              {jobMenuOpen && (
+                <div className="absolute right-0 mt-1 bg-white border rounded shadow z-10 w-40">
+                  <button 
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                    onClick={handleEditOpportunity}
+                  >
+                    Edit Job
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
       </div>
@@ -1263,6 +1366,28 @@ export default function JobDetailPage() {
         selectedApplicantName={selectedApplicant?.name}
         onScheduleInterview={handleScheduleInterview}
         editingInterview={editingInterview}
+      />
+
+      <EditOpportunityModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        opportunityData={(() => {
+          const modalData = opportunity ? {
+            id: opportunity.id,
+            role: opportunity.role || '',
+            title: opportunity.title || '',
+            department: opportunity.department || '',
+            location: opportunity.location || '',
+            description: opportunity.description || '',
+            stipend: opportunity.stipend || '',
+            vacancies: opportunity.vacancies,
+            maxParticipants: opportunity.maxParticipants,
+            regStartDate: opportunity.regStartDate,
+            regEndDate: opportunity.regEndDate,
+          } : null;
+          return modalData;
+        })()}
+        onSave={handleSaveOpportunity}
       />
     </div>
   );

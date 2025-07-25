@@ -6,15 +6,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Bell, Loader2 } from 'lucide-react';
 import { useLoading } from '@/components/LoadingProvider';
+import { usePageContext } from '@/components/PageContext';
+import { usePagesCache } from '@/lib/useCache';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-
-type Page = {
-  id: string;
-  title: string;
-  uName: string;
-  logo?: string;
-  type: string;
-};
 
 const routeSegmentMap: Record<string, string> = {
   'dashboard': 'Dashboard',
@@ -34,13 +28,15 @@ export default function Header(): React.JSX.Element | null {
   const pathname = usePathname();
   const router = useRouter();
   const { startLoading } = useLoading();
+  const { selectedPageId, setSelectedPageId } = usePageContext();
+
+  // Use cache for pages data
+  const { data: pages, loading: loadingPages } = usePagesCache();
 
   const [currentJobTitle, setCurrentJobTitle] = useState<string | null>(null);
   const [loadingJobTitle, setLoadingJobTitle] = useState<boolean>(false);
   const [currentEventTitle, setCurrentEventTitle] = useState<string | null>(null);
   const [loadingEventTitle, setLoadingEventTitle] = useState<boolean>(false);
-  const [pages, setPages] = useState<Page[]>([]);
-  const [loadingPages, setLoadingPages] = useState(true);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [loadingPageId, setLoadingPageId] = useState<string | null>(null);
   const [postDropdownOpen, setPostDropdownOpen] = useState(false);
@@ -142,15 +138,15 @@ export default function Header(): React.JSX.Element | null {
         
         // Use cache if it's less than 5 minutes old
         if (cachedPages && cacheTime && (now - parseInt(cacheTime)) < 5 * 60 * 1000) {
-          setPages(JSON.parse(cachedPages));
-          setLoadingPages(false);
+          // setPages(JSON.parse(cachedPages)); // This line was removed as per the edit hint
+          // setLoadingPages(false); // This line was removed as per the edit hint
           return;
         }
 
         const res = await fetch('/api/pages');
         const data = await res.json();
         if (data.success) {
-          setPages(data.pages);
+          // setPages(data.pages); // This line was removed as per the edit hint
           // Cache the pages for 5 minutes
           sessionStorage.setItem('cachedPages', JSON.stringify(data.pages));
           sessionStorage.setItem('cachedPagesTime', now.toString());
@@ -158,7 +154,7 @@ export default function Header(): React.JSX.Element | null {
       } catch {
         // Silently handle page fetch error
       } finally {
-        setLoadingPages(false);
+        // setLoadingPages(false); // This line was removed as per the edit hint
       }
     };
 
@@ -304,9 +300,7 @@ export default function Header(): React.JSX.Element | null {
               <SheetHeader>
                 <SheetTitle className="text-base">Switch Organization Page</SheetTitle>
                 <SheetDescription>
-                  {pathname.startsWith('/events') 
-                    ? "Choose a different organization to view their events:" 
-                    : "Choose a different organization to view their job opportunities:"}
+                  Choose a different organization to view their opportunities and events:
                 </SheetDescription>
               </SheetHeader>
 
@@ -327,7 +321,7 @@ export default function Header(): React.JSX.Element | null {
                     <p className="text-xs text-gray-400 mt-1">Create an organization first to get started.</p>
                   </div>
                 ) : (
-                  pages.map((page) => (
+                  pages.map((page: { id: string; title: string; uName: string; logo?: string; type: string }) => (
                     <button
                       key={page.id}
                       onClick={async () => {
@@ -335,15 +329,25 @@ export default function Header(): React.JSX.Element | null {
                         startLoading();
                         setSheetOpen(false); // Close sheet immediately
                         
-                        // Route to appropriate page based on current path
+                        // Update the context and localStorage
+                        setSelectedPageId(page.id);
+                        
+                        // Navigate based on current path
                         if (pathname.startsWith('/events')) {
                           router.push(`/events?pageId=${page.id}`);
+                        } else if (pathname.startsWith('/job-listing')) {
+                          router.push(`/job-listing?pageId=${page.id}`);
                         } else {
+                          // Default to job-listing if not on a specific page
                           router.push(`/job-listing?pageId=${page.id}`);
                         }
                       }}
                       disabled={loadingPageId === page.id}
-                      className="block w-full text-left bg-gray-50 border border-gray-200 px-4 py-3 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={`block w-full text-left border px-4 py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                        selectedPageId === page.id 
+                          ? 'bg-blue-50 border-blue-200 text-blue-900' 
+                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                      }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">

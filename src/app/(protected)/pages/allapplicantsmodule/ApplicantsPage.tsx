@@ -95,7 +95,7 @@ export default function ApplicantsPage() {
                   role: opportunity.role || opportunity.title,
                   jobType: opportunity.type || 'Not specified',
                   uploads: Object.values(applicant.documents?.summary || {}).filter(Boolean).length,
-                  appliedOn: new Date(applicant.appliedDate || applicant.createdAt).toLocaleDateString(),
+                  appliedOn: new Date(applicant.appliedDate || applicant.createdAt || Date.now()).toLocaleDateString(),
                   status: applicant.status,
                   score: Math.floor(Math.random() * 10) + 1, // Generate score for display
                   scoreColor: applicant.status === 'REJECTED' ? 'text-red-500' : 

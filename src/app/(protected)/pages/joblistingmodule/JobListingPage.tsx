@@ -4,8 +4,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useSession } from 'next-auth/react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useLoading } from '@/components/LoadingProvider';
+import { usePageContext } from '@/components/PageContext';
 import { Loader2 } from 'lucide-react';
 
 type Job = {
@@ -30,8 +31,13 @@ type PaginationInfo = {
 export default function JobListingPage() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
-  const pageId = searchParams.get('pageId');
+  const router = useRouter();
+  const { selectedPageId, setSelectedPageId } = usePageContext();
   const { startLoading, stopLoading } = useLoading();
+  
+  // Get pageId from URL params first, then from context
+  const urlPageId = searchParams.get('pageId');
+  const pageId = urlPageId || selectedPageId;
   
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +84,20 @@ export default function JobListingPage() {
     stopLoading();
   }
   }, [session, pageId]); // Removed startLoading and stopLoading from dependencies
+
+  // Auto-redirect to stored pageId if none in URL
+  useEffect(() => {
+    if (!urlPageId && selectedPageId) {
+      router.replace(`/job-listing?pageId=${selectedPageId}`);
+    }
+  }, [urlPageId, selectedPageId, router]);
+
+  // Update context when pageId changes
+  useEffect(() => {
+    if (urlPageId && urlPageId !== selectedPageId) {
+      setSelectedPageId(urlPageId);
+    }
+  }, [urlPageId, selectedPageId, setSelectedPageId]);
 
   // Fetch page name
   useEffect(() => {

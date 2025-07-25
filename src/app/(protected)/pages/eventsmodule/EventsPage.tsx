@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useLoading } from '@/components/LoadingProvider';
+import { usePageContext } from '@/components/PageContext';
 
 // Defining the structure of an Event using TypeScript interface
 interface Event {
@@ -21,8 +22,13 @@ interface Event {
 export default function Events(): React.JSX.Element {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
-  const pageId = searchParams.get('pageId');
+  const router = useRouter();
+  const { selectedPageId, setSelectedPageId } = usePageContext();
   const { startLoading, stopLoading } = useLoading();
+  
+  // Get pageId from URL params first, then from context
+  const urlPageId = searchParams.get('pageId');
+  const pageId = urlPageId || selectedPageId;
   
   const [eventList, setEventList] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +81,20 @@ export default function Events(): React.JSX.Element {
       stopLoading();
     };
   }, [stopLoading]);
+
+  // Auto-redirect to stored pageId if none in URL
+  useEffect(() => {
+    if (!urlPageId && selectedPageId) {
+      router.replace(`/events?pageId=${selectedPageId}`);
+    }
+  }, [urlPageId, selectedPageId, router]);
+
+  // Update context when pageId changes
+  useEffect(() => {
+    if (urlPageId && urlPageId !== selectedPageId) {
+      setSelectedPageId(urlPageId);
+    }
+  }, [urlPageId, selectedPageId, setSelectedPageId]);
 
   // Fetch page name
   useEffect(() => {
@@ -138,9 +158,6 @@ export default function Events(): React.JSX.Element {
       }
     };
   }, [currentPage, session, pageId]); // Removed fetchEvents to prevent infinite loops
-
-  // For routing to a dynamic event page (Review Applicants)
-  const router = useRouter();
 
   if (loading) {
     return (

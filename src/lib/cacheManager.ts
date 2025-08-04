@@ -166,8 +166,8 @@ class CacheManager {
         items: Array.from(this.cache.entries())
       };
       localStorage.setItem('hr-portal-cache', JSON.stringify(cacheData));
-    } catch (error) {
-      console.warn('Failed to save cache to localStorage:', error);
+    } catch {
+      // Failed to save cache to localStorage
     }
   }
 
@@ -191,8 +191,8 @@ class CacheManager {
           }
         }
       }
-    } catch (error) {
-      console.warn('Failed to load cache from localStorage:', error);
+    } catch {
+      // Failed to load cache from localStorage
     }
   }
 }

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useLoading } from '@/components/LoadingProvider';
 import { usePageContext } from '@/components/PageContext';
+import { TableSkeleton } from '@/components/ui/loading-skeleton';
 
 // Defining the structure of an Event using TypeScript interface
 interface Event {
@@ -43,7 +44,7 @@ export default function Events(): React.JSX.Element {
     try {
       isFetchingRef.current = true;
       setLoading(true);
-      startLoading();
+      startLoading('Loading events...');
       setError(null);
 
       const apiUrl = new URL('/api/events', window.location.origin);
@@ -73,14 +74,14 @@ export default function Events(): React.JSX.Element {
       stopLoading();
       isFetchingRef.current = false;
     }
-  }, [session, pageId, startLoading, stopLoading]);
+  }, [session, pageId]); // Removed startLoading and stopLoading from dependencies
 
   // Cleanup loading state on unmount
   useEffect(() => {
     return () => {
-      stopLoading();
+      // Cleanup function - no dependencies needed
     };
-  }, [stopLoading]);
+  }, []); // Empty dependency array
 
   // Auto-redirect to stored pageId if none in URL
   useEffect(() => {
@@ -161,12 +162,33 @@ export default function Events(): React.JSX.Element {
 
   if (loading) {
     return (
-      <div className="p-8 bg-[#F8F9FC] min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Loading events...</p>
-          {currentPageName && <p className="text-sm text-gray-500 mt-2">for {currentPageName}</p>}
+      <div className="p-4 sm:p-6 md:p-8 bg-[#F8F9FC] min-h-screen">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div>
+            <h1 className="text-xl md:text-2xl font-semibold mb-1">
+              Events
+              {currentPageName && <span className="text-lg text-blue-600 ml-2">- {currentPageName}</span>}
+            </h1>
+            <p className="text-gray-500 text-sm">
+              Here are your events from {new Date().toLocaleDateString('en-GB')} to {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB')}
+            </p>
+            {session?.user && (
+              <p className="text-sm text-blue-600 mt-1">Showing events for: {session.user.email}</p>
+            )}
+          </div>
         </div>
+
+        {/* Loading State - Inline */}
+        <div className="mb-4">
+          <div className="flex items-center gap-2 text-blue-600">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-sm">Loading events...</span>
+          </div>
+        </div>
+        
+        {/* Table Skeleton */}
+        <TableSkeleton rows={8} />
       </div>
     );
   }

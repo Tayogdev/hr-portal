@@ -88,8 +88,6 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('Error fetching questionnaire data:', error);
-    
     return NextResponse.json({
       success: false,
       message: 'Failed to fetch questionnaire data',

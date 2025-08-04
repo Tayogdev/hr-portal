@@ -20,30 +20,35 @@ export async function PUT(
 
     const { eventId, applicantId } = await params;
     const { status } = await request.json();
+    
 
-    if (!status || !['APPROVED', 'DECLINED'].includes(status)) {
+
+    if (!status || !['APPROVED', 'DECLINED', 'REJECTED'].includes(status)) {
       return NextResponse.json(
-        { success: false, message: 'Invalid status. Must be APPROVED or DECLINED' },
+        { success: false, message: 'Invalid status. Must be APPROVED, DECLINED, or REJECTED' },
         { status: 400 }
       );
     }
 
+    // The status field already exists in the registeredEvent table
+
     // Map status values to database values
-    // Use the same status values as job listing system
-    const dbStatus = status === 'APPROVED' ? 'SHORTLISTED' : 'REJECTED';
+    const dbStatus = status === 'APPROVED' ? 'SHORTLISTED' : status === 'REJECTED' ? 'REJECTED' : 'REJECTED';
 
     // Update the applicant status in the database
+    // applicantId is the registration ID (id field from registeredEvent table)
     const updateQuery = `
       UPDATE "registeredEvent" 
-      SET "bookingStatus" = $1
-      WHERE "eventId" = $2 AND "userId" = $3
+      SET "status" = $1
+      WHERE "eventId" = $2 AND "id" = $3
     `;
     
+
     const updateResult = await pool.query(updateQuery, [dbStatus, eventId, applicantId]);
     
-    if (updateResult.rowCount === 0) {
+        if (updateResult.rowCount === 0) {
       return NextResponse.json(
-        { success: false, message: 'Applicant not found' },
+        { success: false, message: 'Applicant not found. No matching registration found.' },
         { status: 404 }
       );
     }
@@ -64,38 +69,46 @@ export async function PUT(
     const event = eventResult.rows[0];
 
     // Get applicant details for email
-    const applicantQuery = `
-      SELECT u.name, u.email, u."firstName", u."lastName"
-      FROM users u 
-      WHERE u.id = $1
-    `;
-    const applicantResult = await pool.query(applicantQuery, [applicantId]);
-    
-    if (applicantResult.rows.length === 0) {
-      return NextResponse.json(
-        { success: false, message: 'Applicant user not found' },
-        { status: 404 }
-      );
-    }
-
-    const applicant = applicantResult.rows[0];
-    const applicantName = applicant.firstName && applicant.lastName 
-      ? `${applicant.firstName} ${applicant.lastName}` 
-      : applicant.name || 'Applicant';
-
-    // Send email notification
-    const emailData = {
-      applicantName,
-      applicantEmail: applicant.email,
-      jobTitle: event.title,
-      companyName: 'Tayog'
-    };
-
     let emailSent = false;
-    if (status === 'APPROVED') {
-      emailSent = await EmailNotifications.sendShortlistedEmail(emailData);
-    } else if (status === 'DECLINED') {
-      emailSent = await EmailNotifications.sendRejectedEmail(emailData);
+    
+    try {
+      const registrationQuery = `
+        SELECT "userId" FROM "registeredEvent" WHERE "id" = $1 AND "eventId" = $2
+      `;
+      const registrationResult = await pool.query(registrationQuery, [applicantId, eventId]);
+      
+      if (registrationResult.rows.length > 0) {
+        const userId = registrationResult.rows[0].userId;
+        
+        const applicantQuery = `
+          SELECT u.name, u.email
+          FROM users u 
+          WHERE u.id = $1
+        `;
+        const applicantResult = await pool.query(applicantQuery, [userId]);
+        
+        if (applicantResult.rows.length > 0) {
+          const applicant = applicantResult.rows[0];
+          const applicantName = applicant.name || 'Applicant';
+
+          // Send email notification
+          const emailData = {
+            applicantName,
+            applicantEmail: applicant.email,
+            jobTitle: event.title,
+            companyName: 'Tayog'
+          };
+
+          if (status === 'APPROVED') {
+            emailSent = await EmailNotifications.sendShortlistedEmail(emailData);
+          } else if (status === 'REJECTED' || status === 'DECLINED') {
+            emailSent = await EmailNotifications.sendRejectedEmail(emailData);
+          }
+        }
+      }
+    } catch (emailError) {
+      console.error('Error sending email notification:', emailError);
+      // Continue without email notification
     }
 
     return NextResponse.json({

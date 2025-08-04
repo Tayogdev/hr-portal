@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/dbconfig/dbconfig';
 import { validateAPIRouteAndGetUserId } from '@/lib/utils';
+import { invalidateCache } from '@/lib/cacheManager';
 
 interface EventQueryResult {
   id: string;
@@ -101,7 +102,6 @@ export async function GET(
     response.headers.set('Cache-Control', 'private, max-age=30');
     return response;
   } catch (error) {
-    console.error('Error fetching event details:', error);
     return NextResponse.json({
       success: false,
       message: 'Failed to fetch event details',
@@ -189,7 +189,6 @@ export async function PUT(
     `;
     
     const ownershipResult = await pool.query(ownershipQuery, [eventId, userId]);
-    console.log('PUT event ownership check result:', ownershipResult.rows);
     
     if (ownershipResult.rows.length === 0) {
       return NextResponse.json({
@@ -238,6 +237,9 @@ export async function PUT(
 
     const updatedEvent = updateResult.rows[0];
 
+    // Invalidate related cache
+    invalidateCache.event(eventId);
+
     return NextResponse.json({
       success: true,
       message: 'Event updated successfully',
@@ -257,7 +259,6 @@ export async function PUT(
     });
 
   } catch (error) {
-    console.error('Error updating event:', error);
     return NextResponse.json({
       success: false,
       message: 'Failed to update event',

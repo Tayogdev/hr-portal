@@ -7,6 +7,7 @@ interface RegisteredEventQueryResult {
   userId: string;
   eventId: string;
   bookingStatus: string;
+  status: string | null;
   firstName: string | null;
   lastName: string | null;
   gender: string | null;
@@ -144,7 +145,7 @@ export async function GET(
           month: 'long',
           day: 'numeric'
         }),
-        status: user.bookingStatus === 'SUCCESS' ? 'FINAL' : 'PENDING' as const, // Use actual booking status
+        status: user.status || 'PENDING' as const, // Use the status field for approval status
         score: Math.min(score, 10), // Cap at 10
         profession: user.profession || undefined,
         organizationName: user.organizationName || undefined,
@@ -179,14 +180,6 @@ export async function GET(
     response.headers.set('Cache-Control', 'private, max-age=30');
     return response;
   } catch (error) {
-    console.error('Error fetching registered users for event:', error);
-    
-    // Log more details for debugging
-    if (error instanceof Error) {
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-    }
-    
     return NextResponse.json({
       success: false,
       message: 'Failed to fetch registered users for event',

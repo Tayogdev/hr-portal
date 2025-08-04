@@ -10,8 +10,6 @@ export async function GET(
     const { userId } = await validateAPIRouteAndGetUserId(request);
     const { opportunityId } = await params;
 
-    console.log('Ownership check - userId:', userId, 'opportunityId:', opportunityId);
-
     if (!opportunityId) {
       return NextResponse.json({
         success: false,
@@ -27,7 +25,6 @@ export async function GET(
     `;
     
     const opportunityResult = await pool.query(opportunityQuery, [opportunityId]);
-    console.log('Opportunity data for ownership check:', opportunityResult.rows[0]);
 
     if (opportunityResult.rows.length === 0) {
       return NextResponse.json({
@@ -50,22 +47,12 @@ export async function GET(
     `;
     
     const result = await pool.query(query, [opportunity.publishedBy, userId]);
-    console.log('Ownership check result:', result.rows);
     
     const isOwner = result.rows.length > 0;
     const ownershipData = isOwner ? result.rows[0] : null;
 
-    // If not owner, let's check what page ownership records exist for this user
-    if (!isOwner) {
-      const userOwnershipQuery = `
-        SELECT "pageId", "userId", "isActive", role
-        FROM "pageOwnership"
-        WHERE "userId" = $1
-      `;
-      
-      const userOwnershipResult = await pool.query(userOwnershipQuery, [userId]);
-      console.log('User ownership records:', userOwnershipResult.rows);
-    }
+    // If not owner, we could check what page ownership records exist for this user
+    // but for now we'll just return the ownership status
 
     return NextResponse.json({
       success: true,
@@ -84,7 +71,6 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('Error checking opportunity ownership:', error);
     return NextResponse.json({
       success: false,
       message: 'Failed to check opportunity ownership',

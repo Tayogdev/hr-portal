@@ -8,6 +8,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useLoading } from '@/components/LoadingProvider';
 import { usePageContext } from '@/components/PageContext';
 import { Loader2 } from 'lucide-react';
+import { TableSkeleton } from '@/components/ui/loading-skeleton';
 
 type Job = {
   id: string;
@@ -51,38 +52,38 @@ export default function JobListingPage() {
   const fetchJobs = useCallback(async (page: number) => {
     if (!session || !pageId) return;
     
-  try {
-    setLoading(true);
-    startLoading();
-    setError(null);
+    try {
+      setLoading(true);
+      startLoading('Loading job opportunities...');
+      setError(null);
 
-    const apiUrl = new URL('/api/opportunities', window.location.origin);
-    apiUrl.searchParams.set('page', page.toString());
-    apiUrl.searchParams.set('limit', '10');
+      const apiUrl = new URL('/api/opportunities', window.location.origin);
+      apiUrl.searchParams.set('page', page.toString());
+      apiUrl.searchParams.set('limit', '10');
       apiUrl.searchParams.set('pageId', pageId);
-    apiUrl.searchParams.set('_t', Date.now().toString());
+      apiUrl.searchParams.set('_t', Date.now().toString());
 
-    const response = await fetch(apiUrl.toString(), {
+      const response = await fetch(apiUrl.toString(), {
         headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-      credentials: 'include',
-    });
+        credentials: 'include',
+      });
 
-    if (!response.ok) {
+      if (!response.ok) {
         throw new Error(`Failed to fetch jobs (${response.status})`);
-    }
+      }
 
-    const result = await response.json();
-    if (result.success && result.data) {
-      setJobs(result.data.opportunities || []);
+      const result = await response.json();
+      if (result.success && result.data) {
+        setJobs(result.data.opportunities || []);
         setPagination(result.data.pagination || { total: 0, page: 1, totalPages: 1, hasMore: false });
-    }
-  } catch (err) {
+      }
+    } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load jobs');
-    setJobs([]);
-  } finally {
-    setLoading(false);
-    stopLoading();
-  }
+      setJobs([]);
+    } finally {
+      setLoading(false);
+      stopLoading();
+    }
   }, [session, pageId]); // Removed startLoading and stopLoading from dependencies
 
   // Auto-redirect to stored pageId if none in URL
@@ -109,16 +110,16 @@ export default function JobListingPage() {
     const cachedName = sessionStorage.getItem(`pageName_${pageId}`);
     if (cachedName) {
       setCurrentPageName(cachedName);
-          return;
-        }
+      return;
+    }
 
     fetch(`/api/pages/${pageId}`)
       .then(res => res.json())
       .then(data => {
-            if (data.success && data.page) {
-              setCurrentPageName(data.page.title);
-              sessionStorage.setItem(`pageName_${pageId}`, data.page.title);
-            }
+        if (data.success && data.page) {
+          setCurrentPageName(data.page.title);
+          sessionStorage.setItem(`pageName_${pageId}`, data.page.title);
+        }
       })
       .catch(() => {}); // Silent error handling
   }, [pageId]);
@@ -139,12 +140,33 @@ export default function JobListingPage() {
 
   if (loading) {
     return (
-      <div className="p-8 bg-[#F8F9FC] min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Loading opportunities...</p>
-          {currentPageName && <p className="text-sm text-gray-500 mt-2">for {currentPageName}</p>}
+      <div className="p-4 sm:p-6 md:p-8 bg-[#F8F9FC] min-h-screen">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div>
+            <h1 className="text-xl md:text-2xl font-semibold mb-1">
+              Job Listing
+              {currentPageName && <span className="text-lg text-blue-600 ml-2">- {currentPageName}</span>}
+            </h1>
+            <p className="text-gray-500 text-sm">
+              Here is your job listing from {new Date().toLocaleDateString('en-GB')} to {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB')}
+            </p>
+            {session?.user && (
+              <p className="text-sm text-blue-600 mt-1">Showing opportunities for: {session.user.email}</p>
+            )}
+          </div>
         </div>
+
+        {/* Loading State - Inline */}
+        <div className="mb-4">
+          <div className="flex items-center gap-2 text-blue-600">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-sm">Loading job opportunities...</span>
+          </div>
+        </div>
+        
+        {/* Table Skeleton */}
+        <TableSkeleton rows={8} />
       </div>
     );
   }
@@ -158,7 +180,7 @@ export default function JobListingPage() {
           <Button onClick={() => fetchJobs(currentPage)} disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
             Try Again
-                </Button>
+          </Button>
         </div>
       </div>
     );
@@ -200,7 +222,7 @@ export default function JobListingPage() {
     );
   }
 
-    return (
+  return (
     <div className="p-4 sm:p-6 md:p-8 bg-[#F8F9FC] min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -237,14 +259,14 @@ export default function JobListingPage() {
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                   <span className="font-medium">{job.role}</span>
-                      </div>
+                </div>
                 <div>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                     job.status === 'Live' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                   }`}>
                     {job.status}
-                      </span>
-                    </div>
+                  </span>
+                </div>
                 <div className="text-gray-600">{job.type}</div>
                 <div className="text-gray-600">{job.posted}</div>
                 <div className="text-gray-600">{job.due}</div>
@@ -257,32 +279,32 @@ export default function JobListingPage() {
                     </Button>
                   </Link>
                 </div>
-                          </div>
-                        </div>
+              </div>
+            </div>
           ))}
-                    </div>
+        </div>
       </div>
 
       {/* Pagination */}
       {pagination.totalPages > 1 && (
         <div className="flex justify-center items-center gap-4 mt-6">
-        <Button
+          <Button
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
-          variant="outline"
+            variant="outline"
           >
             Previous
-        </Button>
+          </Button>
           <span className="text-gray-600">Page {currentPage} of {pagination.totalPages}</span>
-        <Button
+          <Button
             onClick={() => setCurrentPage(prev => Math.min(pagination.totalPages, prev + 1))}
             disabled={currentPage === pagination.totalPages}
-          variant="outline"
+            variant="outline"
           >
             Next
-        </Button>
-      </div>
+          </Button>
+        </div>
       )}
-      </div>
+    </div>
   );
 }

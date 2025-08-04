@@ -12,7 +12,7 @@ import EditEventModal from '../../../../components/EditEventModal';
 // and their respective types (ApplicantProfile, etc.) if they don't exist.
 // For the purpose of this code, we'll include placeholder functions for their logic.
 interface ApplicantProfile {
-  id: number;
+  id: string;
   name: string;
   image: string;
   type: string;
@@ -20,7 +20,7 @@ interface ApplicantProfile {
   tags: string[];
   appliedDate: string;
   score: number;
-  status: 'SHORTLISTED' | 'FINAL' | 'REJECTED' | 'PENDING' | 'APPROVED' | 'DECLINED';
+  status: 'SHORTLISTED' | 'FINAL' | 'REJECTED' | 'PENDING';
   assignedTask?: {
     id: string;
     title: string;
@@ -105,6 +105,53 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewModalProps> = ({ isOpen,
   );
 };
 
+interface PaymentInitiationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onPaymentRequest: () => void;
+  applicantName?: string;
+}
+
+const PaymentInitiationModal: React.FC<PaymentInitiationModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onPaymentRequest 
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-4">Frame 1984078167</h2>
+          <div className="mb-6">
+            <p className="text-lg font-bold text-green-600 mb-2">
+              The application is approved
+            </p>
+            <p className="text-gray-600">
+              Proceed for the payment initiation request
+            </p>
+          </div>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={onClose}
+              className="px-6 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onPaymentRequest}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Payment request
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 export default function EventPage() {
   const params = useParams();
@@ -113,7 +160,7 @@ export default function EventPage() {
   const [jobStatus, setJobStatus] = useState<'Live' | 'Closed'>('Live');
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [jobMenuOpen, setJobMenuOpen] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<'all' | 'final' | 'approved' | 'declined'>('all');
+  const [selectedTab, setSelectedTab] = useState<'all' | 'final' | 'approved'>('all');
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
   const [selectedApplicant, setSelectedApplicant] = useState<ApplicantProfile | null>(null);
   const [eventDetails, setEventDetails] = useState<{
@@ -141,6 +188,7 @@ export default function EventPage() {
   // States for Modals
   const [isAssignTaskModalOpen, setIsAssignTaskModalOpen] = useState(false);
   const [isScheduleInterviewModalOpen, setIsScheduleInterviewModalOpen] = useState(false);
+  const [isPaymentInitiationModalOpen, setIsPaymentInitiationModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<{ id: string; title: string; description: string; dueDate: string } | null>(null);
   const [editingInterview, setEditingInterview] = useState<{ id: string; date: string; time: string; interviewer: string; mode: string; link?: string; notes?: string } | null>(null);
   const [activeSection, setActiveSection] = useState<'none' | 'profile' | 'resume' | 'contact' | 'files' | 'taskDetails' | 'interviewDetails' | 'applicantDetails'>('none');
@@ -148,7 +196,7 @@ export default function EventPage() {
   const [allRegistrations, setAllRegistrations] = useState<number>(0);
   const [finalAttendees, setFinalAttendees] = useState<number>(0);
   const [approvedApplicants, setApprovedApplicants] = useState<number>(0);
-  const [declinedApplicants, setDeclinedApplicants] = useState<number>(0);
+
   const [applicants, setApplicants] = useState<ApplicantProfile[]>([]);
   const [questionnaireData, setQuestionnaireData] = useState<{
     firstName: string | null;
@@ -261,7 +309,7 @@ export default function EventPage() {
             maritalStatus?: boolean;
             zipCode?: string;
           }) => ({
-            id: parseInt(user.id) || Math.random(),
+            id: user.id, // Use the original string ID from database
             userId: user.userId, // Add userId for API calls
             name: user.name,
             image: user.image || '/avatar-placeholder.png',
@@ -270,7 +318,8 @@ export default function EventPage() {
             tags: user.tags || [],
             appliedDate: user.appliedDate,
             score: user.score || 5,
-            status: user.bookingStatus === 'SUCCESS' ? 'FINAL' : user.bookingStatus === 'SHORTLISTED' ? 'SHORTLISTED' : user.bookingStatus === 'REJECTED' ? 'REJECTED' : 'PENDING', // Use booking status to determine status
+            status: user.status || 'PENDING', // Use the status field directly
+            bookingStatus: user.bookingStatus, // Add bookingStatus for payment tracking
             assignedTask: undefined, // You can add task assignment logic later
             scheduledInterview: undefined, // You can add interview scheduling logic later
             resumePath: undefined, // You can add resume upload logic later
@@ -386,11 +435,9 @@ export default function EventPage() {
       case 'all':
         return applicants;
       case 'final':
-        return applicants.filter(app => app.status === 'FINAL');
+        return applicants.filter(app => app.bookingStatus === 'SUCCESS');
               case 'approved':
           return applicants.filter(app => app.status === 'SHORTLISTED');
-        case 'declined':
-          return applicants.filter(app => app.status === 'REJECTED');
       default:
         return applicants;
     }
@@ -406,15 +453,13 @@ export default function EventPage() {
   // Update counts when applicants change
   useEffect(() => {
     setAllRegistrations(applicants.length);
-    setFinalAttendees(applicants.filter(app => app.status === 'FINAL').length);
+    setFinalAttendees(applicants.filter(app => app.bookingStatus === 'SUCCESS').length);
     setApprovedApplicants(applicants.filter(app => app.status === 'SHORTLISTED').length);
-    setDeclinedApplicants(applicants.filter(app => app.status === 'REJECTED').length);
   }, [applicants]);
 
   const tabs = [
     { id: 'all', label: `All Registrations (${allRegistrations})` },
     { id: 'approved', label: `Approved (${approvedApplicants})` },
-    { id: 'declined', label: `Declined (${declinedApplicants})` },
     { id: 'final', label: `Final Attendees (${finalAttendees})` },
   ];
 
@@ -492,7 +537,8 @@ export default function EventPage() {
           setSelectedApplicant(prev => prev ? { ...prev, status: 'SHORTLISTED' as const } : null);
         }
         
-        alert('Applicant approved successfully! Email notification sent.');
+        // Show payment initiation modal
+        setIsPaymentInitiationModalOpen(true);
       } else {
         alert('Failed to approve applicant: ' + result.message);
       }
@@ -502,7 +548,52 @@ export default function EventPage() {
     }
   };
 
-  const handleDeclineApplicant = async (applicantId: string) => {
+  const handlePaymentRequest = async () => {
+    if (!selectedApplicant) return;
+    
+
+    
+    try {
+      // Update booking status to PENDING for payment
+      const response = await fetch(`/api/events/${eventId}/applicants/${selectedApplicant.id}/payment-status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ bookingStatus: 'PENDING' }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Update local state
+        setApplicants(prev => 
+          prev.map(applicant => 
+            applicant.id === selectedApplicant.id 
+              ? { ...applicant, bookingStatus: 'PENDING' }
+              : applicant
+          )
+        );
+        
+        // Update selected applicant
+        setSelectedApplicant(prev => prev ? { ...prev, bookingStatus: 'PENDING' } : null);
+        
+        setIsPaymentInitiationModalOpen(false);
+        alert('Payment request initiated successfully!');
+      } else {
+        alert('Failed to initiate payment request: ' + result.message);
+      }
+    } catch (error) {
+      console.error('Error initiating payment request:', error);
+      alert('Failed to initiate payment request. Please try again.');
+    }
+  };
+
+  const handleClosePaymentModal = () => {
+    setIsPaymentInitiationModalOpen(false);
+  };
+
+  const handleRejectApplicant = async (applicantId: string) => {
     if (!selectedApplicant) return;
     
     try {
@@ -511,7 +602,7 @@ export default function EventPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: 'DECLINED' }),
+        body: JSON.stringify({ status: 'REJECTED' }),
       });
 
       const result = await response.json();
@@ -531,13 +622,13 @@ export default function EventPage() {
           setSelectedApplicant(prev => prev ? { ...prev, status: 'REJECTED' as const } : null);
         }
         
-        alert('Applicant declined successfully! Email notification sent.');
+        alert('Applicant rejected successfully! Email notification sent.');
       } else {
-        alert('Failed to decline applicant: ' + result.message);
+        alert('Failed to reject applicant: ' + result.message);
       }
     } catch (error) {
-      console.error('Error declining applicant:', error);
-      alert('Failed to decline applicant. Please try again.');
+      console.error('Error rejecting applicant:', error);
+      alert('Failed to reject applicant. Please try again.');
     }
   };
 
@@ -722,7 +813,7 @@ export default function EventPage() {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setSelectedTab(tab.id as 'all' | 'final' | 'approved' | 'declined')}
+              onClick={() => setSelectedTab(tab.id as 'all' | 'final' | 'approved')}
               className={`py-2 md:py-4 px-1 relative ${
                 selectedTab === tab.id ? 'text-[#6366F1] font-medium' : 'text-black'
               }`}
@@ -833,20 +924,31 @@ export default function EventPage() {
                     <div className="mt-2 text-sm text-gray-500">
                       <span>Applied {applicant.appliedDate || 'N/A'}</span>
                     </div>
-                    <div className="mt-1">
+                    <div className="mt-1 flex flex-wrap gap-1">
                       <span
                         className={`inline-block px-2 py-1 text-xs rounded-full ${
-                          applicant.status === 'FINAL'
-                            ? 'bg-green-100 text-green-800'
-                            : applicant.status === 'SHORTLISTED'
-                            ? 'bg-blue-100 text-blue-800'
+                          applicant.status === 'SHORTLISTED'
+                            ? 'bg-purple-100 text-purple-700'
                             : applicant.status === 'REJECTED'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-gray-100 text-gray-800'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-gray-100 text-gray-600'
                         }`}
                       >
-                        {applicant.status}
+                        {applicant.status === 'SHORTLISTED' ? 'Approved' : applicant.status === 'REJECTED' ? 'Rejected' : applicant.status}
                       </span>
+                      {applicant.status === 'SHORTLISTED' && applicant.bookingStatus && (
+                        <span
+                          className={`inline-block px-2 py-1 text-xs rounded-full ${
+                            applicant.bookingStatus === 'SUCCESS'
+                              ? 'bg-green-100 text-green-700'
+                              : applicant.bookingStatus === 'PENDING'
+                              ? 'bg-gray-100 text-gray-600'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {applicant.bookingStatus === 'SUCCESS' ? 'Paid' : 'Pending'}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -889,8 +991,10 @@ export default function EventPage() {
           </div>
         </div>
 
-        {/* Navigation and Action Buttons */}
-        <div className="flex flex-wrap gap-2 mb-6">
+        {/* Navigation and Action Buttons - Single Row Layout */}
+        <div className="flex items-center justify-between mb-6">
+          {/* Navigation Tabs */}
+          <div className="flex gap-2">
           <button
             className={`border border-gray-300 px-4 py-2 rounded-full text-sm transition ${
               activeSection === 'profile' ? 'text-gray-900' : 'text-gray-700 hover:bg-gray-100'
@@ -917,30 +1021,34 @@ export default function EventPage() {
           >
             Applicant Details
           </button>
+          </div>
 
+          {/* Approve/Reject Buttons - Right Side */}
+          <div className="flex gap-3">
           <button
-            onClick={() => handleDeclineApplicant(selectedApplicant.id.toString())}
+              onClick={() => handleRejectApplicant(selectedApplicant.id.toString())}
             disabled={selectedApplicant.status === 'REJECTED'}
-            className={`border border-gray-300 px-4 py-2 rounded-full text-sm transition ${
-              selectedApplicant.status === 'REJECTED'
-                ? 'bg-red-50 text-red-600 border-red-200 cursor-not-allowed'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
+                            className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                selectedApplicant.status === 'REJECTED'
+                  ? 'bg-red-50 text-red-600 border border-red-200 cursor-not-allowed'
+                  : 'bg-white text-black border border-purple-300 hover:bg-purple-50 hover:border-purple-400'
+              }`}
           >
-            {selectedApplicant.status === 'REJECTED' ? 'Declined' : 'Decline'}
+              {selectedApplicant.status === 'REJECTED' ? 'Rejected' : 'Reject'}
           </button>
           
           <button
             onClick={() => handleApproveApplicant(selectedApplicant.id.toString())}
             disabled={selectedApplicant.status === 'SHORTLISTED'}
-            className={`border border-gray-300 px-4 py-2 rounded-full text-sm transition ${
+              className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
               selectedApplicant.status === 'SHORTLISTED'
-                ? 'bg-green-50 text-green-600 border-green-200 cursor-not-allowed'
-                : 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                  ? 'bg-green-50 text-green-600 border border-green-200 cursor-not-allowed'
+                  : 'bg-blue-600 text-white border border-blue-600 hover:bg-blue-700 hover:border-blue-700'
             }`}
           >
             {selectedApplicant.status === 'SHORTLISTED' ? 'Approved' : 'Approve'}
           </button>
+          </div>
         </div>
       </div>
 
@@ -1179,6 +1287,13 @@ export default function EventPage() {
           contact: eventDetails.contact
         } : null}
         onSave={handleSaveEvent}
+      />
+
+      <PaymentInitiationModal
+        isOpen={isPaymentInitiationModalOpen}
+        onClose={handleClosePaymentModal}
+        onPaymentRequest={handlePaymentRequest}
+        applicantName={selectedApplicant?.name}
       />
     </div>
   );

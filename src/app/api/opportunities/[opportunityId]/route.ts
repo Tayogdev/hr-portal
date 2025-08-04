@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/dbconfig/dbconfig';
 import { validateAPIRouteAndGetUserId } from '@/lib/utils';
+import { invalidateCache } from '@/lib/cacheManager';
 
 interface OpportunityQueryResult {
   id: string;
@@ -94,7 +95,6 @@ export async function GET(
     response.headers.set('Cache-Control', 'private, max-age=30');
     return response;
   } catch (error) {
-    console.error('Error fetching opportunity details:', error);
     return NextResponse.json({
       success: false,
       message: 'Failed to fetch opportunity details',
@@ -153,7 +153,6 @@ export async function PUT(
     `;
     
     const ownershipResult = await pool.query(ownershipQuery, [opportunityId, userId]);
-    console.log('PUT ownership check result:', ownershipResult.rows);
     
     if (ownershipResult.rows.length === 0) {
       return NextResponse.json({
@@ -204,6 +203,9 @@ export async function PUT(
 
     const updatedOpportunity = updateResult.rows[0];
 
+    // Invalidate related cache
+    invalidateCache.opportunity(opportunityId);
+
     return NextResponse.json({
       success: true,
       message: 'Opportunity updated successfully',
@@ -224,7 +226,6 @@ export async function PUT(
     });
 
   } catch (error) {
-    console.error('Error updating opportunity:', error);
     return NextResponse.json({
       success: false,
       message: 'Failed to update opportunity',

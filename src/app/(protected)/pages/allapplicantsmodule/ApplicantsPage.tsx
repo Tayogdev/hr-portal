@@ -1,10 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import ReviewFilterButton from './ReviewFilterButton';
 import AdvancedFilterModal from './AdvancedFilterModal';
 import { useRouter } from 'next/navigation';
+
+import { TableSkeleton } from '@/components/ui/loading-skeleton';
+import { Loader2 } from 'lucide-react';
 
 interface Applicant {
   id: string;
@@ -30,8 +33,6 @@ const statusColorMap: Record<string, string> = {
   FINAL: 'bg-green-100 text-green-700',
 };
 
-
-
 export default function ApplicantsPage() {
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,80 +50,36 @@ export default function ApplicantsPage() {
   const itemsPerPage = 10;
 
   // Fetch all applicants from all opportunities
-  useEffect(() => {
-    const fetchAllApplicants = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchAllApplicants = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        // First get all opportunities
-        const opportunitiesResponse = await fetch('/api/opportunities?page=1&limit=100');
-        if (!opportunitiesResponse.ok) {
-          throw new Error('Failed to fetch opportunities');
-        }
-        const opportunitiesData = await opportunitiesResponse.json();
-
-        if (!opportunitiesData.success || !opportunitiesData.data?.opportunities) {
-          throw new Error('No opportunities found');
-        }
-
-        // Fetch applicants for each opportunity
-        const allApplicants: Applicant[] = [];
-        
-        for (const opportunity of opportunitiesData.data.opportunities) {
-          try {
-            const applicantsResponse = await fetch(`/api/opportunities/${opportunity.id}/applicants?page=1&limit=100`);
-            if (applicantsResponse.ok) {
-              const applicantsData = await applicantsResponse.json();
-              
-              if (applicantsData.success && applicantsData.data?.applicants) {
-                const enhancedApplicants = applicantsData.data.applicants.map((applicant: {
-                  id: string;
-                  userId: string;
-                  name?: string;
-                  email?: string;
-                  appliedDate?: string;
-                  createdAt?: string;
-                  status: string;
-                  documents?: {
-                    summary?: Record<string, string>;
-                  };
-                }) => ({
-                  id: applicant.id,
-                  userId: applicant.userId,
-                  name: applicant.name || 'Anonymous',
-                  email: applicant.email || '',
-                  role: opportunity.role || opportunity.title,
-                  jobType: opportunity.type || 'Not specified',
-                  uploads: Object.values(applicant.documents?.summary || {}).filter(Boolean).length,
-                  appliedOn: new Date(applicant.appliedDate || applicant.createdAt || Date.now()).toLocaleDateString(),
-                  status: applicant.status,
-                  score: Math.floor(Math.random() * 10) + 1, // Generate score for display
-                  scoreColor: applicant.status === 'REJECTED' ? 'text-red-500' : 
-                             applicant.status === 'SHORTLISTED' ? 'text-green-600' : 
-                             'text-yellow-500',
-                  opportunityId: opportunity.id,
-                  opportunityTitle: opportunity.title
-                }));
-                
-                allApplicants.push(...enhancedApplicants);
-              }
-            }
-          } catch (err) {
-            console.warn(`Failed to fetch applicants for opportunity ${opportunity.id}:`, err);
-          }
-        }
-
-        setApplicants(allApplicants);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch applicants');
-      } finally {
-        setLoading(false);
+      // Use the new efficient API endpoint
+      const response = await fetch('/api/opportunities/applicants');
+      if (!response.ok) {
+        throw new Error('Failed to fetch applicants');
       }
-    };
+      
+      const data = await response.json();
+      
+      if (!data.success || !data.data?.applicants) {
+        throw new Error('No applicants found');
+      }
 
-    fetchAllApplicants();
+      setApplicants(data.data.applicants);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch applicants');
+      setApplicants([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // Fetch applicants only once on mount
+  useEffect(() => {
+    fetchAllApplicants();
+  }, []); // Empty dependency array - only run once
 
   useEffect(() => {
     setCurrentPage(1);
@@ -175,52 +132,19 @@ export default function ApplicantsPage() {
       }
 
       // Update local state
-    setApplicants(prev => 
-  prev.map(applicant => 
-    applicant.id === applicantId 
-      ? { ...applicant, status: newStatus as Applicant['status'] }
-      : applicant
-  )
-);
+      setApplicants(prev => 
+        prev.map(applicant => 
+          applicant.id === applicantId 
+            ? { ...applicant, status: newStatus as Applicant['status'] }
+            : applicant
+        )
+      );
 
     } catch (err) {
       console.error('Error updating status:', err);
       alert('Failed to update status. Please try again.');
     }
   };
-
-  if (loading) {
-    return (
-      <div className="p-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-1">Applicants</h1>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading applicants...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-1">Applicants</h1>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <p className="text-red-600 mb-4">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            >
-              Try Again
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-6">
@@ -257,6 +181,33 @@ export default function ApplicantsPage() {
         <ReviewFilterButton onClick={() => setShowAdvancedFilter(true)} />
       </div>
 
+      {/* Loading State - Inline */}
+      {loading && (
+        <div className="mb-4">
+          <div className="flex items-center gap-2 text-blue-600">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-sm">Loading applicants...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Error State - Inline */}
+      {error && !loading && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-red-600 text-sm">⚠️ {error}</span>
+            </div>
+            <button
+              onClick={() => fetchAllApplicants()}
+              className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table Header */}
       <div className="grid grid-cols-7 gap-4 py-2 px-3 bg-gray-100 font-medium text-gray-700 rounded-md text-sm">
         <div>Applicant</div>
@@ -268,12 +219,22 @@ export default function ApplicantsPage() {
         <div>Actions</div>
       </div>
 
-      {/* Table Rows */}
-      {filteredApplicants.length === 0 ? (
+      {/* Table Content */}
+      {loading ? (
+        // Show skeleton while loading
+        <TableSkeleton rows={8} />
+      ) : error ? (
+        // Show empty state when there's an error
+        <div className="text-center py-8 text-gray-500">
+          <p>Unable to load applicants. Please try again.</p>
+        </div>
+      ) : filteredApplicants.length === 0 ? (
+        // Show empty state when no applicants
         <div className="text-center py-8 text-gray-500">
           <p>No applicants found for the selected filter.</p>
         </div>
       ) : (
+        // Show actual data
         paginatedApplicants.map((applicant) => (
           <div
             key={applicant.id}
@@ -325,30 +286,32 @@ export default function ApplicantsPage() {
       )}
 
       {/* Pagination */}
-      <div className="flex justify-center mt-6 gap-4">
-        <button
-          disabled={currentPage === 1}
-          onClick={() => setCurrentPage((prev) => prev - 1)}
-          className={`px-4 py-2 rounded-md ${
-            currentPage === 1
-              ? 'bg-gray-200 cursor-not-allowed'
-              : 'bg-[#4F8FF0] text-white hover:bg-[#3B77D3]'
-          }`}
-        >
-          Previous
-        </button>
-        <button
-          disabled={startIndex + itemsPerPage >= filteredApplicants.length}
-          onClick={() => setCurrentPage((prev) => prev + 1)}
-          className={`px-4 py-2 rounded-md ${
-            startIndex + itemsPerPage >= filteredApplicants.length
-              ? 'bg-gray-200 cursor-not-allowed'
-              : 'bg-[#4F8FF0] text-white hover:bg-[#3B77D3]'
-          }`}
-        >
-          Next
-        </button>
-      </div>
+      {!loading && !error && filteredApplicants.length > 0 && (
+        <div className="flex justify-center mt-6 gap-4">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((prev) => prev - 1)}
+            className={`px-4 py-2 rounded-md ${
+              currentPage === 1
+                ? 'bg-gray-200 cursor-not-allowed'
+                : 'bg-[#4F8FF0] text-white hover:bg-[#3B77D3]'
+            }`}
+          >
+            Previous
+          </button>
+          <button
+            disabled={startIndex + itemsPerPage >= filteredApplicants.length}
+            onClick={() => setCurrentPage((prev) => prev + 1)}
+            className={`px-4 py-2 rounded-md ${
+              startIndex + itemsPerPage >= filteredApplicants.length
+                ? 'bg-gray-200 cursor-not-allowed'
+                : 'bg-[#4F8FF0] text-white hover:bg-[#3B77D3]'
+            }`}
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {/* Advanced Filter Modal */}
       {showAdvancedFilter && (
@@ -360,9 +323,6 @@ export default function ApplicantsPage() {
           }}
         />
       )}
-
-     
-
     </div>
   );
 }

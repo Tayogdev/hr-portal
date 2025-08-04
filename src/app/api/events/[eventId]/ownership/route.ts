@@ -53,7 +53,6 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('Error checking event ownership:', error);
     return NextResponse.json({
       success: false,
       message: 'Failed to check event ownership',

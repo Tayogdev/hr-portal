@@ -106,8 +106,7 @@ export async function GET(request: NextRequest) {
 
     response.headers.set('Cache-Control', 'private, max-age=30');
     return response;
-  } catch (error) {
-    console.error('Error fetching opportunities:', error);
+  } catch {
     return NextResponse.json({
       success: false,
       message: 'Failed to fetch opportunities'

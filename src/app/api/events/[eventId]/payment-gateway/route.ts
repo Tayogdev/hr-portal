@@ -79,7 +79,6 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('Error retrieving payment gateway config:', error);
     return NextResponse.json({
       success: false,
       message: 'Failed to retrieve payment gateway configuration',
@@ -180,7 +179,6 @@ export async function PUT(
     });
 
   } catch (error) {
-    console.error('Error updating payment gateway config:', error);
     return NextResponse.json({
       success: false,
       message: 'Failed to update payment gateway configuration',

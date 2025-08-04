@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Briefcase, 
   Users, 
@@ -10,14 +10,29 @@ import {
   Plus,
   Eye,
   Clock,
-  CheckCircle
+  CheckCircle,
+  Loader2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { usePageContext } from '@/components/PageContext';
+import { useLoading } from '@/components/LoadingProvider';
+import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
 
 export default function DashboardPage(): React.JSX.Element {
   const router = useRouter();
   const { selectedPageId } = usePageContext();
+  const { startLoading, stopLoading } = useLoading();
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
+
+  // Simulate loading on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Mock data for dashboard - in production this would come from API
   const stats = [
@@ -113,6 +128,28 @@ export default function DashboardPage(): React.JSX.Element {
     }
   ];
 
+  const handleNavigation = (href: string, actionTitle: string) => {
+    setLoadingAction(actionTitle);
+    startLoading(`Loading ${actionTitle}...`);
+    
+    setTimeout(() => {
+      let finalHref = href;
+      if (href === '/job-listing' && selectedPageId) {
+        finalHref = `/job-listing?pageId=${selectedPageId}`;
+      } else if (href === '/events' && selectedPageId) {
+        finalHref = `/events?pageId=${selectedPageId}`;
+      }
+      
+      router.push(finalHref);
+      setLoadingAction(null);
+      stopLoading();
+    }, 500);
+  };
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
       {/* Header */}
@@ -126,15 +163,7 @@ export default function DashboardPage(): React.JSX.Element {
         {stats.map((stat, index) => (
           <div 
             key={index}
-            onClick={() => {
-              let href = stat.href;
-              if (stat.href === '/job-listing' && selectedPageId) {
-                href = `/job-listing?pageId=${selectedPageId}`;
-              } else if (stat.href === '/events' && selectedPageId) {
-                href = `/events?pageId=${selectedPageId}`;
-              }
-              router.push(href);
-            }}
+            onClick={() => handleNavigation(stat.href, stat.title)}
             className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
           >
             <div className="flex items-center justify-between">
@@ -161,19 +190,16 @@ export default function DashboardPage(): React.JSX.Element {
           {quickActions.map((action, index) => (
             <button
               key={index}
-              onClick={() => {
-                let href = action.href;
-                if (action.href === '/job-listing' && selectedPageId) {
-                  href = `/job-listing?pageId=${selectedPageId}`;
-                } else if (action.href === '/events' && selectedPageId) {
-                  href = `/events?pageId=${selectedPageId}`;
-                }
-                router.push(href);
-              }}
-              className={`${action.color} text-white p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 text-left`}
+              onClick={() => handleNavigation(action.href, action.title)}
+              disabled={loadingAction === action.title}
+              className={`${action.color} text-white p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 text-left disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               <div className="flex items-center mb-2">
-                {action.icon}
+                {loadingAction === action.title ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  action.icon
+                )}
                 <span className="ml-2 font-semibold">{action.title}</span>
               </div>
               <p className="text-sm opacity-90">{action.description}</p>

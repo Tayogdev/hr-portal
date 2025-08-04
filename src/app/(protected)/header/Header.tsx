@@ -138,30 +138,41 @@ export default function Header(): React.JSX.Element | null {
         
         // Use cache if it's less than 5 minutes old
         if (cachedPages && cacheTime && (now - parseInt(cacheTime)) < 5 * 60 * 1000) {
-          // setPages(JSON.parse(cachedPages)); // This line was removed as per the edit hint
-          // setLoadingPages(false); // This line was removed as per the edit hint
           return;
         }
 
         const res = await fetch('/api/pages');
         const data = await res.json();
         if (data.success) {
-          // setPages(data.pages); // This line was removed as per the edit hint
           // Cache the pages for 5 minutes
           sessionStorage.setItem('cachedPages', JSON.stringify(data.pages));
           sessionStorage.setItem('cachedPagesTime', now.toString());
         }
       } catch {
         // Silently handle page fetch error
-      } finally {
-        // setLoadingPages(false); // This line was removed as per the edit hint
       }
     };
 
     fetchPages();
   }, []);
 
-  if (status === 'loading' || !session) return null;
+  if (status === 'loading' || !session) {
+    // Show loading skeleton instead of null
+    return (
+      <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-30 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className="h-6 bg-gray-200 rounded animate-pulse w-32"></div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="w-9 h-9 bg-gray-200 rounded-full animate-pulse"></div>
+            <div className="w-24 h-9 bg-gray-200 rounded-full animate-pulse"></div>
+            <div className="w-32 h-9 bg-gray-200 rounded-full animate-pulse"></div>
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   const hiddenRoutes = ['/login', '/register'];
   if (hiddenRoutes.includes(pathname)) return null;
@@ -203,8 +214,6 @@ export default function Header(): React.JSX.Element | null {
   const isJobDetailPage = pathname.startsWith('/job-listing/') && pathname.split('/').length === 3;
   const isEventDetailPage = pathname.startsWith('/events/') && pathname.split('/').length === 3;
 
-  if ((isJobDetailPage || isEventDetailPage) && (loadingJobTitle || loadingEventTitle)) return null;
-
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-30 shadow-sm">
       <div className="flex items-center justify-between">
@@ -214,7 +223,12 @@ export default function Header(): React.JSX.Element | null {
               <React.Fragment key={crumb.href}>
                 {index > 0 && <span className="text-gray-400 text-lg mx-1">&gt;</span>}
                 {index === breadcrumbs.length - 1 ? (
-                  <h1 className="text-lg text-gray-600">{crumb.title}</h1>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-lg text-gray-600">{crumb.title}</h1>
+                    {(isJobDetailPage && loadingJobTitle) || (isEventDetailPage && loadingEventTitle) ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                    ) : null}
+                  </div>
                 ) : (
                   <Link href={crumb.href} className="text-lg text-gray-600 hover:text-gray-800 transition-colors">
                     {crumb.title}

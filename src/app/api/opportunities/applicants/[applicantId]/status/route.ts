@@ -11,6 +11,7 @@ import { type NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { EmailNotifications } from '@/lib/emailService';
 import { getApplicantDataByApplicantId } from '@/lib/emailHelpers';
+import { invalidateCache } from '@/lib/cacheManager';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,19 +101,18 @@ export async function PUT(
           if (emailData && emailData.applicantEmail) {
             if (status === 'SHORTLISTED') {
               await EmailNotifications.sendShortlistedEmail(emailData);
-              console.log(`Shortlisted email sent to ${emailData.applicantEmail}`);
             } else if (status === 'REJECTED') {
               await EmailNotifications.sendRejectedEmail(emailData);
-              console.log(`Rejected email sent to ${emailData.applicantEmail}`);
             }
-          } else {
-            console.error('Could not fetch email data for applicant:', applicantId);
           }
-        } catch (emailError) {
-          console.error('Error sending status change email:', emailError);
+        } catch {
+          // Email sending failed silently
         }
       });
     }
+
+    // Invalidate applicants cache
+    invalidateCache.applicants();
 
     return NextResponse.json({
       success: true,
@@ -132,7 +132,6 @@ export async function PUT(
     });
 
   } catch (error) {
-    console.error('Error updating applicant status:', error);
     return NextResponse.json({
       success: false,
       message: 'Failed to update applicant status',
@@ -176,7 +175,6 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('Error getting applicant status:', error);
     return NextResponse.json({
       success: false,
       message: 'Failed to get applicant status',

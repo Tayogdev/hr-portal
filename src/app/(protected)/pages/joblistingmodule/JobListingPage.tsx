@@ -273,11 +273,21 @@ export default function JobListingPage() {
                 <div className="text-gray-600">{job.applicants}</div>
                 <div className="text-gray-600">{job.needs}</div>
                 <div>
-                  <Link href={`/job-listing/${job.id}`}>
-                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                      {job.action}
+                  {job.status === 'Closed' ? (
+                    <Button 
+                      size="sm" 
+                      disabled 
+                      className="bg-gray-300 text-gray-500 cursor-not-allowed text-xs px-3 py-1.5 rounded-full"
+                    >
+                      Review Applicants
                     </Button>
-                  </Link>
+                  ) : (
+                    <Link href={`/job-listing/${job.id}`}>
+                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-xs px-3 py-1.5 rounded-full">
+                        {job.action}
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>

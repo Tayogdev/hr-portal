@@ -126,6 +126,16 @@ export interface InterviewEmailData extends ApplicantEmailData {
   };
 }
 
+export interface PaymentRequestEmailData extends ApplicantEmailData {
+  eventDetails: {
+    title: string;
+    type: string;
+    location: string;
+    department: string;
+    paymentLink?: string;
+  };
+}
+
 // Create singleton instance
 export const emailService = new EmailService();
 
@@ -431,6 +441,118 @@ export const EmailNotifications = {
               
               <p style="margin-top: 24px;">Thanks,<br/>
               <span class="highlight">Team Tayog</span><br/>
+              <a href="mailto:hello@tayog.in" class="support-link">hello@tayog.in</a></p>
+            </div>
+            <div class="footer">
+              Copyrights © all rights reserved by Tayog
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    return await emailService.sendEmail({
+      from: process.env.DEFAULT_FROM_EMAIL || 'dhageravi4@gmail.com',
+      to: data.applicantEmail,
+      subject,
+      html
+    });
+  },
+
+  /**
+   * Send payment request email for event registration
+   */
+  async sendPaymentRequestEmail(data: PaymentRequestEmailData): Promise<boolean> {
+    const subject = `Payment Request for Event Registration`;
+    
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Payment Request for Event Registration</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f9fafb; }
+            .container { max-width: 600px; margin: 0 auto; background-color: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+            .header { background-color: #8b5cf6; color: white; text-align: center; padding: 40px 24px; }
+            .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+            .content { padding: 32px 24px; color: #374151; line-height: 1.6; }
+            .greeting-line { width: 50px; height: 3px; background-color: #ec4899; margin: 0 0 20px 0; }
+            .event-card { background-color: white; border-radius: 8px; border-left: 4px solid #3b82f6; padding: 20px; margin: 24px 0; position: relative; }
+            .verified-badge { color: #3b82f6; font-size: 14px; margin-bottom: 12px; }
+            .event-title { color: #1e40af; font-weight: 600; font-size: 18px; margin-bottom: 16px; }
+            .event-details { display: flex; align-items: center; margin-bottom: 8px; font-size: 14px; color: #6b7280; }
+            .event-details svg { width: 16px; height: 16px; margin-right: 8px; }
+            .event-logo { position: absolute; top: 20px; right: 20px; text-align: center; }
+            .event-logo img { width: 40px; height: 40px; border-radius: 50%; }
+            .event-logo-text { font-size: 12px; color: #6b7280; margin-top: 4px; }
+            .pay-button { display: inline-block; background-color: #2563eb; color: white; padding: 12px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 24px 0; text-align: center; }
+            .pay-button:hover { background-color: #1d4ed8; }
+            .payment-note { text-align: center; font-size: 14px; color: #6b7280; margin-bottom: 24px; }
+            .support-section { background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 24px 0; }
+            .support-text { font-size: 14px; color: #6b7280; margin-bottom: 12px; }
+            .footer { background-color: #f3f4f6; text-align: center; padding: 16px; font-size: 12px; color: #6b7280; }
+            .support-link { color: #2563eb; text-decoration: none; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Payment Request for Event Registration</h1>
+            </div>
+            <div class="content">
+              <div class="greeting-line"></div>
+              <p>Dear <span style="font-weight: 600;">${data.applicantName}</span>,</p>
+              
+              <p>Thank you for registering for <span style="font-weight: 600;">${data.eventDetails.title}</span>. We are excited to have you as a participant in this unique event. Your application has been successfully reviewed and provisionally confirmed for the event. To complete your registration and reserve your spot, we kindly request you to proceed with the payment process.</p>
+              
+              <div class="event-card">
+                <div class="verified-badge">✓ Verified by ${data.eventDetails.department}</div>
+                <div class="event-title">${data.eventDetails.title}</div>
+                <div class="event-details">
+                  <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clip-rule="evenodd" />
+                  </svg>
+                  ${data.eventDetails.type}
+                </div>
+                <div class="event-details">
+                  <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                  </svg>
+                  ${data.eventDetails.location}
+                </div>
+                <div class="event-details">
+                  <svg fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                  </svg>
+                  ${data.eventDetails.department}
+                </div>
+                <div class="event-logo">
+                  <div style="width: 40px; height: 40px; background-color: #f59e0b; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px;">K</div>
+                  <div class="event-logo-text">KHOJ 24<br/>Research Scholars' Day</div>
+                </div>
+              </div>
+              
+              <div style="text-align: center;">
+                <a href="${data.eventDetails.paymentLink || '#'}" class="pay-button">
+                  Pay Now
+                  <svg style="width: 16px; height: 16px; margin-left: 8px; display: inline-block;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+                <div class="payment-note">This link will redirect you to the payment gateway to pay</div>
+              </div>
+              
+              <div class="support-section">
+                <p class="support-text">If you have any questions in the meantime, feel free to reach out to us.</p>
+                <p style="font-size: 14px; color: #6b7280; margin: 0;">
+                  We are committed to helping you achieve your academic and research goals. If you have any questions or need assistance, our support team is just an email away at <a href="mailto:support@tayog.in" class="support-link">support@tayog.in</a>
+                </p>
+              </div>
+              
+              <p style="margin-top: 24px;">Thanks,<br/>
+              <span style="font-weight: 600;">Team Tayog</span><br/>
               <a href="mailto:hello@tayog.in" class="support-link">hello@tayog.in</a></p>
             </div>
             <div class="footer">

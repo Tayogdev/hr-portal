@@ -107,11 +107,17 @@ export const authOptions: NextAuthOptions = {
 
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.isRegistered = user.isRegistered;
       }
+      
+      // Handle session updates
+      if (trigger === 'update' && session) {
+        token = { ...token, ...session.user };
+      }
+      
       return token;
     },
     async session({ session, token }) {
@@ -127,7 +133,26 @@ export const authOptions: NextAuthOptions = {
     error: '/login'
   },
   session: {
-    strategy: 'jwt'
+    strategy: 'jwt',
+    maxAge: 24 * 60 * 60, // 24 hours
+    updateAge: 60 * 60, // 1 hour
   },
-  secret: process.env.NEXTAUTH_SECRET
+  jwt: {
+    maxAge: 24 * 60 * 60, // 24 hours
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+  // Security settings
+  useSecureCookies: process.env.NODE_ENV === 'production',
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' ? '__Secure-next-auth.session-token' : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60, // 24 hours
+      }
+    }
+  }
 };

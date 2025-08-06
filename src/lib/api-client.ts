@@ -1,232 +1,184 @@
-// API client utilities for tasks and interviews
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { getSession } from 'next-auth/react';
+import cacheManager, { CACHE_KEYS, invalidateCache } from './cacheManager';
 
-import { 
-  CreateTaskRequest, 
-  UpdateTaskRequest, 
-  CreateInterviewRequest, 
-  UpdateInterviewRequest,
-  TasksApiResponse,
-  SingleTaskApiResponse,
-  InterviewsApiResponse,
-  SingleInterviewApiResponse
-} from '@/types/tasks-interviews';
+// API client configuration
+class ApiClient {
+  private client: AxiosInstance;
+  private baseURL: string;
 
-// Base API configuration
-const API_BASE = '';
-const DEFAULT_HEADERS = {
-  'Content-Type': 'application/json',
-};
-
-// Generic API call function
-async function apiCall<T>(
-  endpoint: string, 
-  options: RequestInit = {}
-): Promise<T> {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
+  constructor() {
+    this.baseURL = process.env.NEXT_PUBLIC_API_URL || '';
+    
+    this.client = axios.create({
+      baseURL: this.baseURL,
+      timeout: 30000, // 30 seconds
     headers: {
-      ...DEFAULT_HEADERS,
-      ...options.headers,
-    },
-    credentials: 'include',
-  });
+        'Content-Type': 'application/json',
+      },
+    });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || `API Error: ${response.status}`);
+    this.setupInterceptors();
   }
 
-  if (!data.success) {
-    throw new Error(data.message || 'API request failed');
+  private setupInterceptors() {
+    // Request interceptor - add auth token
+    this.client.interceptors.request.use(
+      async (config) => {
+        const session = await getSession();
+        if (session?.user) {
+          config.headers.Authorization = `Bearer ${session.user.id}`;
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+
+    // Response interceptor - handle errors and caching
+    this.client.interceptors.response.use(
+      (response: AxiosResponse) => {
+        // Cache successful GET requests
+        if (response.config.method?.toLowerCase() === 'get' && response.status === 200) {
+          const cacheKey = this.generateCacheKey(response.config);
+          if (cacheKey) {
+            cacheManager.set(cacheKey, response.data, 5 * 60 * 1000); // 5 minutes
+          }
+        }
+        return response;
+      },
+      async (error) => {
+        // Handle authentication errors
+        if (error.response?.status === 401) {
+          // Clear cache and redirect to login
+          cacheManager.clear();
+          window.location.href = '/login';
+          return Promise.reject(error);
+        }
+
+        // Handle server errors
+        if (error.response?.status >= 500) {
+          console.error('Server error:', error.response.data);
+        }
+
+        return Promise.reject(error);
+      }
+    );
   }
 
-  return data;
+  private generateCacheKey(config: AxiosRequestConfig): string | null {
+    if (!config.url) return null;
+    
+    const method = config.method?.toLowerCase();
+    const url = config.url;
+    const params = config.params ? JSON.stringify(config.params) : '';
+    
+    return `${method}:${url}:${params}`;
+  }
+
+  // Generic request method with caching
+  async request<T>(config: AxiosRequestConfig, useCache = true): Promise<T> {
+    const cacheKey = this.generateCacheKey(config);
+    
+    // Check cache for GET requests
+    if (useCache && config.method?.toLowerCase() === 'get' && cacheKey) {
+      const cachedData = cacheManager.get<T>(cacheKey);
+      if (cachedData) {
+        return cachedData;
+      }
+    }
+
+    const response = await this.client.request<T>(config);
+    return response.data;
+  }
+
+  // GET request with caching
+  async get<T>(url: string, config?: AxiosRequestConfig, useCache = true): Promise<T> {
+    return this.request<T>({ ...config, method: 'GET', url }, useCache);
+  }
+
+  // POST request
+  async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    return this.request<T>({ ...config, method: 'POST', url, data }, false);
+  }
+
+  // PUT request
+  async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    return this.request<T>({ ...config, method: 'PUT', url, data }, false);
+  }
+
+  // DELETE request
+  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    return this.request<T>({ ...config, method: 'DELETE', url }, false);
+  }
+
+  // PATCH request
+  async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    return this.request<T>({ ...config, method: 'PATCH', url, data }, false);
+  }
+
+  // Clear cache for specific patterns
+  clearCache(pattern?: string) {
+    if (pattern) {
+      cacheManager.invalidatePattern(pattern);
+    } else {
+      cacheManager.clear();
+    }
+  }
 }
 
-// Task API functions
-export const taskAPI = {
-  // Get all tasks with optional filters
-  getTasks: async (params?: {
-    opportunityId?: string;
-    applicantId?: string;
-    status?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<TasksApiResponse> => {
-    const searchParams = new URLSearchParams();
-    
-    if (params?.opportunityId) searchParams.set('opportunityId', params.opportunityId);
-    if (params?.applicantId) searchParams.set('applicantId', params.applicantId);
-    if (params?.status) searchParams.set('status', params.status);
-    if (params?.page) searchParams.set('page', params.page.toString());
-    if (params?.limit) searchParams.set('limit', params.limit.toString());
+// Create singleton instance
+const apiClient = new ApiClient();
 
-    const queryString = searchParams.toString();
-    const endpoint = `/api/tasks${queryString ? `?${queryString}` : ''}`;
-    
-    return apiCall<TasksApiResponse>(endpoint);
+// API endpoints with proper typing
+export const api = {
+  // Pages
+  pages: {
+    getAll: () => apiClient.get('/api/pages'),
+    getById: (id: string) => apiClient.get(`/api/pages/${id}`),
+    create: (data: any) => apiClient.post('/api/pages', data),
+    update: (id: string, data: any) => apiClient.put(`/api/pages/${id}`, data),
+    delete: (id: string) => apiClient.delete(`/api/pages/${id}`),
   },
 
-  // Get single task by ID
-  getTask: async (taskId: string): Promise<SingleTaskApiResponse> => {
-    return apiCall<SingleTaskApiResponse>(`/api/tasks/${taskId}`);
+  // Events
+  events: {
+    getAll: (pageId: string) => apiClient.get(`/api/events?pageId=${pageId}`),
+    getById: (id: string) => apiClient.get(`/api/events/${id}`),
+    create: (data: any) => apiClient.post('/api/events', data),
+    update: (id: string, data: any) => apiClient.put(`/api/events/${id}`, data),
+    delete: (id: string) => apiClient.delete(`/api/events/${id}`),
+    getApplicants: (id: string) => apiClient.get(`/api/events/${id}/applicants`),
   },
 
-  // Create new task
-  createTask: async (taskData: CreateTaskRequest): Promise<SingleTaskApiResponse> => {
-    return apiCall<SingleTaskApiResponse>('/api/tasks', {
-      method: 'POST',
-      body: JSON.stringify(taskData),
-    });
+  // Opportunities
+  opportunities: {
+    getAll: (pageId: string) => apiClient.get(`/api/opportunities?pageId=${pageId}`),
+    getById: (id: string) => apiClient.get(`/api/opportunities/${id}`),
+    create: (data: any) => apiClient.post('/api/opportunities', data),
+    update: (id: string, data: any) => apiClient.put(`/api/opportunities/${id}`, data),
+    delete: (id: string) => apiClient.delete(`/api/opportunities/${id}`),
+    getApplicants: (id: string) => apiClient.get(`/api/opportunities/${id}/applicants`),
   },
 
-  // Update existing task
-  updateTask: async (taskId: string, updates: UpdateTaskRequest): Promise<SingleTaskApiResponse> => {
-    return apiCall<SingleTaskApiResponse>(`/api/tasks/${taskId}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
+  // Applicants
+  applicants: {
+    getAll: () => apiClient.get('/api/opportunities/applicants'),
+    getById: (id: string) => apiClient.get(`/api/applicants/${id}`),
+    update: (id: string, data: any) => apiClient.put(`/api/applicants/${id}`, data),
   },
 
-  // Delete task
-  deleteTask: async (taskId: string): Promise<{ success: boolean; message: string }> => {
-    return apiCall<{ success: boolean; message: string }>(`/api/tasks/${taskId}`, {
-      method: 'DELETE',
-    });
-  },
+  // Cache management
+  cache: {
+    clear: (pattern?: string) => apiClient.clearCache(pattern),
+    invalidate: {
+      pages: () => invalidateCache.pages(),
+      events: (eventId: string) => invalidateCache.event(eventId),
+      opportunities: (opportunityId: string) => invalidateCache.opportunity(opportunityId),
+      applicants: () => invalidateCache.applicants(),
+    }
+  }
 };
 
-// Interview API functions
-export const interviewAPI = {
-  // Get all interviews with optional filters
-  getInterviews: async (params?: {
-    opportunityId?: string;
-    applicantId?: string;
-    interviewerId?: string;
-    status?: string;
-    fromDate?: string;
-    toDate?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<InterviewsApiResponse> => {
-    const searchParams = new URLSearchParams();
-    
-    if (params?.opportunityId) searchParams.set('opportunityId', params.opportunityId);
-    if (params?.applicantId) searchParams.set('applicantId', params.applicantId);
-    if (params?.interviewerId) searchParams.set('interviewerId', params.interviewerId);
-    if (params?.status) searchParams.set('status', params.status);
-    if (params?.fromDate) searchParams.set('fromDate', params.fromDate);
-    if (params?.toDate) searchParams.set('toDate', params.toDate);
-    if (params?.page) searchParams.set('page', params.page.toString());
-    if (params?.limit) searchParams.set('limit', params.limit.toString());
-
-    const queryString = searchParams.toString();
-    const endpoint = `/api/interviews${queryString ? `?${queryString}` : ''}`;
-    
-    return apiCall<InterviewsApiResponse>(endpoint);
-  },
-
-  // Get single interview by ID
-  getInterview: async (interviewId: string): Promise<SingleInterviewApiResponse> => {
-    return apiCall<SingleInterviewApiResponse>(`/api/interviews/${interviewId}`);
-  },
-
-  // Create new interview
-  createInterview: async (interviewData: CreateInterviewRequest): Promise<SingleInterviewApiResponse> => {
-    return apiCall<SingleInterviewApiResponse>('/api/interviews', {
-      method: 'POST',
-      body: JSON.stringify(interviewData),
-    });
-  },
-
-  // Update existing interview
-  updateInterview: async (interviewId: string, updates: UpdateInterviewRequest): Promise<SingleInterviewApiResponse> => {
-    return apiCall<SingleInterviewApiResponse>(`/api/interviews/${interviewId}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
-  },
-
-  // Delete interview
-  deleteInterview: async (interviewId: string): Promise<{ success: boolean; message: string }> => {
-    return apiCall<{ success: boolean; message: string }>(`/api/interviews/${interviewId}`, {
-      method: 'DELETE',
-    });
-  },
-};
-
-// Helper functions for frontend integration
-export const apiHelpers = {
-  // Convert frontend task details to API request format
-  convertTaskDetailsToRequest: (
-    taskDetails: { title: string; description: string; dueDate: string; tags: string[]; uploadedFileName: string | null },
-    opportunityId: string,
-    applicantId: string
-  ): CreateTaskRequest => ({
-    opportunityId,
-    applicantId,
-    title: taskDetails.title,
-    description: taskDetails.description,
-    dueDate: taskDetails.dueDate,
-    tags: taskDetails.tags,
-    uploadedFileName: taskDetails.uploadedFileName,
-  }),
-
-  // Convert frontend interview details to API request format
-  convertInterviewDetailsToRequest: (
-    interviewDetails: {
-      selectedDate: Date | undefined;
-      selectedTime: string;
-      notesForCandidate: string;
-      assignInterviewer: string;
-      modeOfInterview: string;
-      linkAddress: string;
-    },
-    opportunityId: string,
-    applicantId: string
-  ): CreateInterviewRequest => {
-    if (!interviewDetails.selectedDate) {
-      throw new Error('Interview date is required');
-    }
-
-    return {
-      opportunityId,
-      applicantId,
-      interviewerName: interviewDetails.assignInterviewer,
-      scheduledDate: interviewDetails.selectedDate.toISOString(),
-      scheduledTime: interviewDetails.selectedTime,
-      modeOfInterview: interviewDetails.modeOfInterview,
-      linkAddress: interviewDetails.linkAddress || null,
-      notesForCandidate: interviewDetails.notesForCandidate || null,
-    };
-  },
-
-  // Get tasks for a specific applicant
-  getTasksForApplicant: async (opportunityId: string, applicantId: string) => {
-    return taskAPI.getTasks({ opportunityId, applicantId });
-  },
-
-  // Get interviews for a specific applicant
-  getInterviewsForApplicant: async (opportunityId: string, applicantId: string) => {
-    return interviewAPI.getInterviews({ opportunityId, applicantId });
-  },
-
-  // Format date for display
-  formatDateForDisplay: (dateString: string): string => {
-    try {
-      return new Date(dateString).toLocaleDateString('en-GB');
-    } catch {
-      return 'Invalid Date';
-    }
-  },
-
-  // Format datetime for display
-  formatDateTimeForDisplay: (dateString: string): string => {
-    try {
-      return new Date(dateString).toLocaleString('en-GB');
-    } catch {
-      return 'Invalid Date';
-    }
-  },
-}; 
+export default apiClient; 

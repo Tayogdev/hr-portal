@@ -52,7 +52,7 @@ export async function PUT(
     }
 
     // Validate status
-    const validStatuses = ['PENDING', 'SHORTLISTED', 'MAYBE', 'REJECTED', 'FINAL'];
+    const validStatuses = ['PENDING', 'SHORTLISTED', 'MAYBE', 'REJECTED', 'FINAL', 'HOLD'];
     if (!validStatuses.includes(status)) {
       return NextResponse.json({
         success: false,

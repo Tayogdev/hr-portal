@@ -15,6 +15,7 @@ import {
   ApplicantsApiResponse,
 } from "@/types/applicants";
 
+
 type TabId = "all" | "shortlisted" | "final" | "rejected";
 type Section =
   | "none"
@@ -201,6 +202,8 @@ export default function JobDetailPage() {
     setIsScheduleInterviewModalOpen(false);
     setEditingInterview(null);
   };
+
+
 
   const handleEditOpportunity = () => {
     setIsEditModalOpen(true);
@@ -1002,13 +1005,11 @@ export default function JobDetailPage() {
 
                 {selectedTab === "shortlisted" && (
                   <div className="flex gap-2">
-                    <div className="relative">
-                      <button className="rounded-full px-4 py-1.5 text-sm font-medium border border-blue-600 text-blue-600 hover:bg-blue-50">
+                    <button className="rounded-full px-4 py-1.5 text-sm font-medium border border-blue-600 text-blue-600 hover:bg-blue-50">
                         Shortlist <span className="ml-1">▼</span>
-                      </button>
-                    </div>
+                    </button>
                     <button className="rounded-md bg-[#6366F1] text-white px-4 py-1.5 text-sm hover:bg-indigo-700">
-                      Finalize
+                        Finalize
                     </button>
                   </div>
                 )}

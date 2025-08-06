@@ -23,9 +23,9 @@ export async function PUT(
     
 
 
-    if (!status || !['APPROVED', 'DECLINED', 'REJECTED'].includes(status)) {
+    if (!status || !['APPROVED', 'DECLINED', 'REJECTED', 'HOLD'].includes(status)) {
       return NextResponse.json(
-        { success: false, message: 'Invalid status. Must be APPROVED, DECLINED, or REJECTED' },
+        { success: false, message: 'Invalid status. Must be APPROVED, DECLINED, REJECTED, or HOLD' },
         { status: 400 }
       );
     }
@@ -33,7 +33,7 @@ export async function PUT(
     // The status field already exists in the registeredEvent table
 
     // Map status values to database values
-    const dbStatus = status === 'APPROVED' ? 'SHORTLISTED' : status === 'REJECTED' ? 'REJECTED' : 'REJECTED';
+    const dbStatus = status === 'APPROVED' ? 'SHORTLISTED' : status === 'HOLD' ? 'HOLD' : 'REJECTED';
 
     // Update the applicant status in the database
     // applicantId is the registration ID (id field from registeredEvent table)
@@ -104,6 +104,7 @@ export async function PUT(
           } else if (status === 'REJECTED' || status === 'DECLINED') {
             emailSent = await EmailNotifications.sendRejectedEmail(emailData);
           }
+          // No email sent for HOLD status
         }
       }
     } catch (emailError) {

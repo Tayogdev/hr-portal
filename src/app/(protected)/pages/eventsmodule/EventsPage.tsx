@@ -7,6 +7,7 @@ import { useSession } from 'next-auth/react';
 import { useLoading } from '@/components/LoadingProvider';
 import { usePageContext } from '@/components/PageContext';
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
+import { Button } from '@/components/ui/button';
 
 // Defining the structure of an Event using TypeScript interface
 interface Event {
@@ -323,18 +324,23 @@ export default function Events(): React.JSX.Element {
                 {/* Action */}
                 <div>
                   {event.status === 'Closed' ? (
-                    <button className="bg-purple-100 text-purple-700 hover:bg-purple-200 text-xs px-3 py-1.5 rounded-full transition-colors">
-                      Closed
-                    </button>
+                    <Button 
+                      size="sm" 
+                      disabled 
+                      className="bg-gray-300 text-gray-500 cursor-not-allowed text-xs px-3 py-1.5 rounded-full"
+                    >
+                      Review Applicants
+                    </Button>
                   ) : (
-                    <button
+                    <Button
+                      size="sm"
                       onClick={() => {
                         router.push(`/events/${event.id}`);
                       }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded-full transition-colors"
+                      className="bg-blue-600 hover:bg-blue-700 text-xs px-3 py-1.5 rounded-full"
                     >
                       Review Applicants
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>

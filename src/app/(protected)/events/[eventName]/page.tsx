@@ -7,6 +7,7 @@ import { Share2, Filter } from 'lucide-react'; // Added Pencil for the edit icon
 import { Button } from '../../../../components/ui/button';
 import EditEventModal from '../../../../components/EditEventModal';
 
+
 // Assuming these are available as separate components in your project
 // You'll need to define these components (AssignTaskModal, ScheduleInterviewModal)
 // and their respective types (ApplicantProfile, etc.) if they don't exist.
@@ -20,7 +21,7 @@ interface ApplicantProfile {
   tags: string[];
   appliedDate: string;
   score: number;
-  status: 'SHORTLISTED' | 'FINAL' | 'REJECTED' | 'PENDING';
+  status: 'SHORTLISTED' | 'FINAL' | 'REJECTED' | 'PENDING' | 'HOLD';
   assignedTask?: {
     id: string;
     title: string;
@@ -160,9 +161,13 @@ export default function EventPage() {
   const [jobStatus, setJobStatus] = useState<'Live' | 'Closed'>('Live');
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [jobMenuOpen, setJobMenuOpen] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<'all' | 'final' | 'approved'>('all');
+  const [selectedTab, setSelectedTab] = useState<'all' | 'final' | 'approved' | 'hold'>('all');
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
   const [selectedApplicant, setSelectedApplicant] = useState<ApplicantProfile | null>(null);
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [isDateFilterOpen, setIsDateFilterOpen] = useState(false);
+  const [approvedSubTab, setApprovedSubTab] = useState<'all' | 'paid' | 'pending'>('all');
   const [eventDetails, setEventDetails] = useState<{
     id: string;
     title: string;
@@ -426,25 +431,91 @@ export default function EventPage() {
 
 
   const getFilteredApplicants = (filterType: string) => {
-    if (filterType === 'All') return applicants;
-    return applicants.filter((app) => app.type === filterType);
+    let filtered = applicants;
+    
+    // Filter by type
+    if (filterType !== 'All') {
+      filtered = filtered.filter((app) => app.type === filterType);
+    }
+    
+    // Filter by date range
+    if (startDate || endDate) {
+      filtered = filtered.filter((app) => {
+        const appliedDate = new Date(app.appliedDate);
+        const start = startDate ? new Date(startDate) : null;
+        const end = endDate ? new Date(endDate) : null;
+        
+        if (start && end) {
+          return appliedDate >= start && appliedDate <= end;
+        } else if (start) {
+          return appliedDate >= start;
+        } else if (end) {
+          return appliedDate <= end;
+        }
+        return true;
+      });
+    }
+    
+    return filtered;
   };
 
   const getTabFilteredApplicants = () => {
+    let filtered = applicants;
+    
+    // Apply tab filtering
     switch (selectedTab) {
       case 'all':
-        return applicants;
+        filtered = applicants;
+        break;
       case 'final':
-        return applicants.filter(app => app.bookingStatus === 'SUCCESS');
+        filtered = applicants.filter(app => app.bookingStatus === 'SUCCESS');
+        break;
               case 'approved':
-          return applicants.filter(app => app.status === 'SHORTLISTED');
+        filtered = applicants.filter(app => app.status === 'SHORTLISTED');
+        // Apply approved sub-tab filtering
+        switch (approvedSubTab) {
+          case 'paid':
+            filtered = filtered.filter(app => app.bookingStatus === 'SUCCESS');
+            break;
+          case 'pending':
+            filtered = filtered.filter(app => app.bookingStatus !== 'SUCCESS');
+            break;
+          case 'all':
       default:
-        return applicants;
+            // No additional filtering needed for 'all'
+            break;
+        }
+        break;
+      case 'hold':
+        filtered = applicants.filter(app => app.status === 'HOLD');
+        break;
+      default:
+        filtered = applicants;
     }
+    
+    // Apply date filtering to all tabs
+    if (startDate || endDate) {
+      filtered = filtered.filter((app) => {
+        const appliedDate = new Date(app.appliedDate);
+        const start = startDate ? new Date(startDate) : null;
+        const end = endDate ? new Date(endDate) : null;
+        
+        if (start && end) {
+          return appliedDate >= start && appliedDate <= end;
+        } else if (start) {
+          return appliedDate >= start;
+        } else if (end) {
+          return appliedDate <= end;
+        }
+        return true;
+      });
+    }
+    
+    return filtered;
   };
 
   const filterCounts = {
-    All: applicants.length,
+    All: getFilteredApplicants('All').length,
     Student: getFilteredApplicants('Student').length,
     Professional: getFilteredApplicants('Professional').length,
     'Foreign National': getFilteredApplicants('Foreign National')?.length || 0,
@@ -457,15 +528,26 @@ export default function EventPage() {
     setApprovedApplicants(applicants.filter(app => app.status === 'SHORTLISTED').length);
   }, [applicants]);
 
+  // Calculate approved sub-tab counts
+  const shortlistedApplicants = applicants.filter(app => app.status === 'SHORTLISTED');
+  const holdApplicants = applicants.filter(app => app.status === 'HOLD');
+  const approvedPaidCount = shortlistedApplicants.filter(app => app.bookingStatus === 'SUCCESS').length;
+  const approvedPendingCount = shortlistedApplicants.filter(app => app.bookingStatus !== 'SUCCESS').length;
+
   const tabs = [
     { id: 'all', label: `All Registrations (${allRegistrations})` },
     { id: 'approved', label: `Approved (${approvedApplicants})` },
+    { id: 'hold', label: `Hold (${holdApplicants.length})` },
     { id: 'final', label: `Final Attendees (${finalAttendees})` },
   ];
 
   const filters = ['All', 'Student', 'Professional', 'Foreign National'];
   const tabFilteredApplicants = getTabFilteredApplicants();
-  const filteredApplicants = selectedTab === 'all' ? getFilteredApplicants(selectedFilter) : tabFilteredApplicants;
+  
+  // Apply type filtering only for "All" tab, otherwise use tab-filtered applicants
+  const filteredApplicants = selectedTab === 'all' 
+    ? getFilteredApplicants(selectedFilter) 
+    : tabFilteredApplicants;
 
   // Dummy functions for modal actions - replace with actual logic
   const handleAssignTask = (taskDetails: { title: string; description: string; dueDate: string }) => {
@@ -593,6 +675,192 @@ export default function EventPage() {
     setIsPaymentInitiationModalOpen(false);
   };
 
+  const handleUpdateStatus = async (newStatus: string) => {
+    if (!selectedApplicant) return;
+    
+    try {
+      const response = await fetch(`/api/events/${eventId}/applicants/${selectedApplicant.id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Update local state
+        setApplicants(prev => 
+          prev.map(applicant => 
+            applicant.id.toString() === selectedApplicant.id.toString()
+              ? { ...applicant, status: newStatus as ApplicantProfile['status'] }
+              : applicant
+          )
+        );
+        
+        // Update selected applicant
+        setSelectedApplicant(prev => prev ? { ...prev, status: newStatus as ApplicantProfile['status'] } : null);
+        
+        alert(`Applicant status updated to ${newStatus} successfully!`);
+      } else {
+        alert('Failed to update status: ' + result.message);
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Failed to update status. Please try again.');
+    }
+  };
+
+  const handleSendReminder = async () => {
+    if (!selectedApplicant) return;
+    
+    try {
+      const response = await fetch(`/api/events/${eventId}/applicants/${selectedApplicant.id}/remind`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        alert('Payment reminder sent successfully!');
+      } else {
+        alert('Failed to send reminder: ' + result.message);
+      }
+    } catch (error) {
+      console.error('Error sending reminder:', error);
+      alert('Failed to send reminder. Please try again.');
+    }
+  };
+
+  const downloadApplicantsAsExcel = () => {
+    // Check if there are applicants to download
+    if (!filteredApplicants || filteredApplicants.length === 0) {
+      alert('No applicants to download.');
+      return;
+    }
+
+    const dataToDownload = filteredApplicants.map(applicant => ({
+      'Name': applicant.name || '',
+      'Email': applicant.email || '',
+      'Phone': applicant.phoneNo || '',
+      'Type': applicant.type || '',
+      'Status': applicant.status || '',
+      'Payment Status': applicant.bookingStatus || 'N/A',
+      'Applied Date': applicant.appliedDate ? new Date(applicant.appliedDate).toLocaleDateString() : '',
+      'Profession': applicant.profession || '',
+      'Organization': applicant.organizationName || '',
+      'State': applicant.state || '',
+      'Country': applicant.country || '',
+      'Gender': applicant.gender || '',
+      'Zip Code': applicant.zipCode || ''
+    }));
+
+    // Check if dataToDownload has content
+    if (!dataToDownload || dataToDownload.length === 0) {
+      alert('No data to download.');
+      return;
+    }
+
+    // Convert to Excel format (XLSX)
+    const headers = Object.keys(dataToDownload[0] || {});
+    if (headers.length === 0) {
+      alert('No headers found for download.');
+      return;
+    }
+
+    const excelContent = [
+      headers.join('\t'),
+      ...dataToDownload.map(row => 
+        headers.map(header => {
+          const value = row[header as keyof typeof row] || '';
+          // Escape tabs and quotes in Excel
+          if (typeof value === 'string' && (value.includes('\t') || value.includes('"'))) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        }).join('\t')
+      )
+    ].join('\n');
+
+    // Create and download file as Excel (.xls)
+    const blob = new Blob([excelContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `applicants_${eventDetails?.title || 'event'}_${new Date().toISOString().split('T')[0]}.xls`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url); // Clean up the URL object
+  };
+
+  const downloadApplicantsAsPDF = () => {
+    // Check if there are applicants to download
+    if (!filteredApplicants || filteredApplicants.length === 0) {
+      alert('No applicants to download.');
+      return;
+    }
+
+    // For PDF download, we'll create a simple text-based report
+    const dataToDownload = filteredApplicants.map(applicant => ({
+      'Name': applicant.name || '',
+      'Email': applicant.email || '',
+      'Phone': applicant.phoneNo || '',
+      'Type': applicant.type || '',
+      'Status': applicant.status || '',
+      'Payment Status': applicant.bookingStatus || 'N/A',
+      'Applied Date': applicant.appliedDate ? new Date(applicant.appliedDate).toLocaleDateString() : '',
+      'Profession': applicant.profession || '',
+      'Organization': applicant.organizationName || '',
+      'State': applicant.state || '',
+      'Country': applicant.country || '',
+      'Gender': applicant.gender || '',
+      'Zip Code': applicant.zipCode || ''
+    }));
+
+    // Create a simple text report
+    const reportContent = [
+      `Applicants Report - ${eventDetails?.title || 'Event'}`,
+      `Generated on: ${new Date().toLocaleDateString()}`,
+      `Total Applicants: ${filteredApplicants.length}`,
+      '',
+      ...dataToDownload.map((applicant, index) => [
+        `Applicant ${index + 1}:`,
+        `  Name: ${applicant.Name}`,
+        `  Email: ${applicant.Email}`,
+        `  Phone: ${applicant.Phone}`,
+        `  Type: ${applicant.Type}`,
+        `  Status: ${applicant.Status}`,
+        `  Payment Status: ${applicant['Payment Status']}`,
+        `  Applied Date: ${applicant['Applied Date']}`,
+        `  Profession: ${applicant.Profession}`,
+        `  Organization: ${applicant.Organization}`,
+        `  State: ${applicant.State}`,
+        `  Country: ${applicant.Country}`,
+        `  Gender: ${applicant.Gender}`,
+        `  Zip Code: ${applicant['Zip Code']}`,
+        ''
+      ].join('\n'))
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `applicants_${eventDetails?.title || 'event'}_${new Date().toISOString().split('T')[0]}.txt`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url); // Clean up the URL object
+  };
+
   const handleRejectApplicant = async (applicantId: string) => {
     if (!selectedApplicant) return;
     
@@ -629,6 +897,45 @@ export default function EventPage() {
     } catch (error) {
       console.error('Error rejecting applicant:', error);
       alert('Failed to reject applicant. Please try again.');
+    }
+  };
+
+  const handleHoldApplicant = async (applicantId: string) => {
+    if (!selectedApplicant) return;
+    
+    try {
+      const response = await fetch(`/api/events/${eventId}/applicants/${applicantId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'HOLD' }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Update local state
+        setApplicants(prev => 
+          prev.map(applicant => 
+            applicant.id.toString() === applicantId 
+              ? { ...applicant, status: 'HOLD' as const }
+              : applicant
+          )
+        );
+        
+        // Update selected applicant if it's the current one
+        if (selectedApplicant.id.toString() === applicantId) {
+          setSelectedApplicant(prev => prev ? { ...prev, status: 'HOLD' as const } : null);
+        }
+        
+        alert('Applicant put on hold successfully.');
+      } else {
+        alert('Failed to put applicant on hold: ' + result.message);
+      }
+    } catch (error) {
+      console.error('Error putting applicant on hold:', error);
+      alert('Failed to put applicant on hold. Please try again.');
     }
   };
 
@@ -813,7 +1120,13 @@ export default function EventPage() {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setSelectedTab(tab.id as 'all' | 'final' | 'approved')}
+              onClick={() => {
+                setSelectedTab(tab.id as 'all' | 'final' | 'approved' | 'hold');
+                // Reset approved sub-tab when switching to a different main tab
+                if (tab.id !== 'approved') {
+                  setApprovedSubTab('all');
+                }
+              }}
               className={`py-2 md:py-4 px-1 relative ${
                 selectedTab === tab.id ? 'text-[#6366F1] font-medium' : 'text-black'
               }`}
@@ -827,9 +1140,99 @@ export default function EventPage() {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Approved Sub-tabs */}
+      {selectedTab === 'approved' && (
+        <div className="flex justify-between mb-4 items-center">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setApprovedSubTab('all')}
+              className={`px-4 py-2 text-sm rounded-full font-medium transition-colors ${
+                approvedSubTab === 'all' ? 'bg-[#6366F1] text-white' : 'bg-gray-200 text-gray-700'
+              }`}
+            >
+              All ({shortlistedApplicants.length})
+            </button>
+            <button
+              onClick={() => setApprovedSubTab('paid')}
+              className={`px-4 py-2 text-sm rounded-full font-medium transition-colors ${
+                approvedSubTab === 'paid' ? 'bg-[#6366F1] text-white' : 'bg-gray-200 text-gray-700'
+              }`}
+            >
+              Paid ({approvedPaidCount})
+            </button>
+            <button
+              onClick={() => setApprovedSubTab('pending')}
+              className={`px-4 py-2 text-sm rounded-full font-medium transition-colors ${
+                approvedSubTab === 'pending' ? 'bg-[#6366F1] text-white' : 'bg-gray-200 text-gray-700'
+              }`}
+            >
+                          Pending ({approvedPendingCount})
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            className="flex items-center justify-center px-4 py-2 rounded-full bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200 hover:border-gray-400 transition-all duration-200"
+            onClick={downloadApplicantsAsExcel}
+            title="Download as Excel"
+          >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </button>
+            <button
+              className={`flex items-center gap-2 px-4 py-2 text-sm rounded-full transition-all duration-200 ${
+                startDate || endDate 
+                  ? 'bg-blue-50 border border-blue-300 text-blue-700 hover:bg-blue-100 hover:border-blue-400' 
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400'
+              }`}
+              onClick={() => setIsDateFilterOpen(!isDateFilterOpen)}
+            >
+              <Filter className="w-4 h-4" />
+              Filter
+              {(startDate || endDate) && (
+                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Hold tab */}
+      {selectedTab === 'hold' && (
+        <div className="flex justify-between mb-4 items-center">
+          <div></div>
+          <div className="flex items-center gap-2">
+            <button
+              className="flex items-center justify-center px-4 py-2 rounded-full bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200 hover:border-gray-400 transition-all duration-200"
+              onClick={downloadApplicantsAsExcel}
+              title="Download as Excel"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </button>
+            <button
+              className={`flex items-center gap-2 px-4 py-2 text-sm rounded-full transition-all duration-200 ${
+                startDate || endDate 
+                  ? 'bg-blue-50 border border-blue-300 text-blue-700 hover:bg-blue-100 hover:border-blue-400' 
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400'
+              }`}
+              onClick={() => setIsDateFilterOpen(!isDateFilterOpen)}
+            >
+              <Filter className="w-4 h-4" />
+              Filter
+              {(startDate || endDate) && (
+                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Filters for All tab */}
       {selectedTab === 'all' && (
-        <div className="flex flex-wrap gap-2 mb-4 items-center">
+        <div className="flex justify-between mb-4 items-center">
+          <div className="flex gap-2">
           {filters.map((filter) => (
             <button
               key={filter}
@@ -841,13 +1244,118 @@ export default function EventPage() {
               {filter} ({filterCounts[filter as keyof typeof filterCounts]})
             </button>
           ))}
+          </div>
+          <div className="flex items-center gap-2">
           <button
-            className="ml-auto flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 text-sm rounded-full transition-colors hover:bg-gray-100"
-            onClick={() => alert(`Reviewing applicants filtered by: ${selectedFilter}`)}
+            className="flex items-center justify-center px-4 py-2 rounded-full bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200 hover:border-gray-400 transition-all duration-200"
+            onClick={downloadApplicantsAsExcel}
+            title="Download as Excel"
           >
-            <Filter className="w-4 h-4 text-gray-600" />
-            Review by filters
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </button>
+            <button
+              className={`flex items-center gap-2 px-4 py-2 text-sm rounded-full transition-all duration-200 ${
+                startDate || endDate 
+                  ? 'bg-blue-50 border border-blue-300 text-blue-700 hover:bg-blue-100 hover:border-blue-400' 
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400'
+              }`}
+              onClick={() => setIsDateFilterOpen(!isDateFilterOpen)}
+            >
+              <Filter className="w-4 h-4" />
+              Filter
+              {(startDate || endDate) && (
+                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+              )}
           </button>
+          </div>
+        </div>
+      )}
+
+      {/* Filter button for Final tab */}
+      {selectedTab === 'final' && (
+        <div className="flex justify-between mb-4 items-center">
+          <div></div>
+          <div className="flex items-center gap-2">
+            <button
+              className="flex items-center justify-center px-4 py-2 rounded-full bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200 hover:border-gray-400 transition-all duration-200"
+              onClick={downloadApplicantsAsExcel}
+              title="Download as Excel"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </button>
+            <button
+              className={`flex items-center gap-2 px-4 py-2 text-sm rounded-full transition-all duration-200 ${
+                startDate || endDate 
+                  ? 'bg-blue-50 border border-blue-300 text-blue-700 hover:bg-blue-100 hover:border-blue-400' 
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400'
+              }`}
+              onClick={() => setIsDateFilterOpen(!isDateFilterOpen)}
+            >
+              <Filter className="w-4 h-4" />
+              Filter
+              {(startDate || endDate) && (
+                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Date Filter Modal */}
+      {isDateFilterOpen && (
+        <div className="bg-white border border-gray-200 rounded-lg p-3 mb-4 shadow-sm max-w-md">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-gray-900">Filter by Date</h3>
+            <button
+              onClick={() => setIsDateFilterOpen(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">From</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">To</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-3">
+            <button
+              onClick={() => {
+                setStartDate('');
+                setEndDate('');
+              }}
+              className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800 border border-gray-300 rounded hover:bg-gray-50"
+            >
+              Clear
+            </button>
+            <button
+              onClick={() => setIsDateFilterOpen(false)}
+              className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Apply
+            </button>
+          </div>
         </div>
       )}
 
@@ -855,7 +1363,18 @@ export default function EventPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: 30% Applicants */}
         <div className="col-span-12 lg:col-span-4 bg-white rounded-lg p-4 shadow-xs">
-          <h2 className="text-lg font-semibold mb-4">Applicants</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Applicants</h2>
+            <button
+              className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-full bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200 transition-colors"
+              onClick={downloadApplicantsAsExcel}
+              title="Download as Excel"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </button>
+          </div>
           {filteredApplicants.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -966,7 +1485,7 @@ export default function EventPage() {
   {selectedApplicant ? (
     <>
       {/* Main Box */}
-      <div className="bg-white rounded-2xl shadow-xs px-6 py-8 max-w-3xl mx-auto relative">
+      <div className="bg-white rounded-2xl shadow-xs px-6 py-8 w-full relative">
         {/* 3-dot Menu */}
         <div className="absolute top-4 right-4">
           <button className="p-2 hover:bg-gray-100 rounded-full">
@@ -1023,8 +1542,38 @@ export default function EventPage() {
           </button>
           </div>
 
-          {/* Approve/Reject Buttons - Right Side */}
+          {/* Action Buttons - Right Side */}
           <div className="flex gap-3">
+            {selectedApplicant.status === 'SHORTLISTED' ? (
+              // Show different buttons based on payment status
+              selectedApplicant.bookingStatus === 'SUCCESS' ? (
+                // Show Paid button when payment is successful
+                <button
+                  disabled
+                  className="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 bg-green-100 text-green-600 border border-green-300 cursor-not-allowed"
+                >
+                  Paid
+                </button>
+              ) : (
+                // Show Pending and Remind buttons when payment is pending
+                <>
+                  <button
+                    disabled
+                    className="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 bg-gray-100 text-gray-500 border border-gray-300 cursor-not-allowed"
+                  >
+                    Pending
+                  </button>
+                  <button
+                    onClick={() => handleSendReminder()}
+                    className="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 bg-purple-100 text-purple-700 border border-purple-300 hover:bg-purple-200"
+                  >
+                    Remind
+                  </button>
+                </>
+              )
+            ) : (
+              // Show Reject and Approve buttons for other statuses
+              <>
           <button
               onClick={() => handleRejectApplicant(selectedApplicant.id.toString())}
             disabled={selectedApplicant.status === 'REJECTED'}
@@ -1038,16 +1587,30 @@ export default function EventPage() {
           </button>
           
           <button
+            onClick={() => handleHoldApplicant(selectedApplicant.id.toString())}
+            disabled={selectedApplicant.status === 'HOLD'}
+            className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
+              selectedApplicant.status === 'HOLD'
+                ? 'bg-orange-50 text-orange-600 border border-orange-200 cursor-not-allowed'
+                : 'bg-white text-black border border-orange-300 hover:bg-orange-50 hover:border-orange-400'
+            }`}
+          >
+            {selectedApplicant.status === 'HOLD' ? 'On Hold' : 'Hold'}
+          </button>
+          
+          <button
             onClick={() => handleApproveApplicant(selectedApplicant.id.toString())}
-            disabled={selectedApplicant.status === 'SHORTLISTED'}
+                  disabled={selectedApplicant.status === 'REJECTED'}
               className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
-              selectedApplicant.status === 'SHORTLISTED'
-                  ? 'bg-green-50 text-green-600 border border-green-200 cursor-not-allowed'
+                    selectedApplicant.status === 'REJECTED'
+                      ? 'bg-gray-50 text-gray-600 border border-gray-200 cursor-not-allowed'
                   : 'bg-blue-600 text-white border border-blue-600 hover:bg-blue-700 hover:border-blue-700'
             }`}
           >
-            {selectedApplicant.status === 'SHORTLISTED' ? 'Approved' : 'Approve'}
+                  Approved
           </button>
+              </>
+            )}
           </div>
         </div>
       </div>

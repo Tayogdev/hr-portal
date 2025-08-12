@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ReactNode, useState } from 'react';
+import logger from '@/lib/logger';
 
 export default function QueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -25,7 +26,7 @@ export default function QueryProvider({ children }: { children: ReactNode }) {
           mutations: {
             retry: 1,
             onError: (error) => {
-              console.error('Mutation error:', error);
+              logger.error('Mutation error', error as Error, 'QueryProvider');
             },
           },
         },

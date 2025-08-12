@@ -386,6 +386,19 @@ export default function EventPage() {
     checkPageOwnership();
   }, [eventId]);
 
+  // Real-time countdown timer for reminder cooldown
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Force re-render to update cooldown timers
+      setApplicants(prev => [...prev]);
+      if (selectedApplicant) {
+        setSelectedApplicant(prev => prev ? { ...prev } : null);
+      }
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [selectedApplicant]);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (statusRef.current && !statusRef.current.contains(e.target as Node)) {
@@ -712,8 +725,61 @@ export default function EventPage() {
     }
   };
 
+  // Helper function to check if remind button should be disabled
+  const isRemindButtonDisabled = (applicant: ApplicantProfile): boolean => {
+    // Check localStorage for reminder timestamp
+    const storageKey = `reminder_${eventId}_${applicant.id}`;
+    const lastReminderTime = localStorage.getItem(storageKey);
+    
+    if (!lastReminderTime) return false;
+    
+    const lastReminder = new Date(lastReminderTime);
+    const currentTime = new Date();
+    const timeDifference = currentTime.getTime() - lastReminder.getTime();
+    const twoHoursInMs = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+    
+    return timeDifference < twoHoursInMs;
+  };
+
+  // Helper function to get remaining cooldown time
+  const getRemainingCooldownTime = (applicant: ApplicantProfile): string => {
+    const storageKey = `reminder_${eventId}_${applicant.id}`;
+    const lastReminderTime = localStorage.getItem(storageKey);
+    
+    if (!lastReminderTime) return '';
+    
+    const lastReminder = new Date(lastReminderTime);
+    const currentTime = new Date();
+    const timeDifference = currentTime.getTime() - lastReminder.getTime();
+    const twoHoursInMs = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+    
+    if (timeDifference >= twoHoursInMs) return '';
+    
+    const remainingTime = twoHoursInMs - timeDifference;
+    const remainingHours = Math.floor(remainingTime / (60 * 60 * 1000));
+    const remainingMinutes = Math.ceil((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
+    
+    if (remainingHours > 0) {
+      return `${remainingHours}h ${remainingMinutes}m`;
+    }
+    return `${remainingMinutes}m`;
+  };
+
+  // Helper function to set reminder timestamp in localStorage
+  const setReminderTimestamp = (applicant: ApplicantProfile) => {
+    const storageKey = `reminder_${eventId}_${applicant.id}`;
+    localStorage.setItem(storageKey, new Date().toISOString());
+  };
+
   const handleSendReminder = async () => {
     if (!selectedApplicant) return;
+    
+    // Check if button is disabled due to cooldown
+    if (isRemindButtonDisabled(selectedApplicant)) {
+      const remainingTime = getRemainingCooldownTime(selectedApplicant);
+      alert(`Reminder cooldown active. Please wait ${remainingTime} before sending another reminder.`);
+      return;
+    }
     
     try {
       const response = await fetch(`/api/events/${eventId}/applicants/${selectedApplicant.id}/remind`, {
@@ -726,7 +792,16 @@ export default function EventPage() {
       const result = await response.json();
       
       if (result.success) {
-        alert('Payment reminder sent successfully!');
+        // Set reminder timestamp in localStorage for frontend cooldown
+        setReminderTimestamp(selectedApplicant);
+        
+        // Force re-render to update button state
+        setApplicants(prev => [...prev]);
+        if (selectedApplicant) {
+          setSelectedApplicant(prev => prev ? { ...prev } : null);
+        }
+        
+        alert('Payment reminder sent successfully! Button is now disabled for 2 hours.');
       } else {
         alert('Failed to send reminder: ' + result.message);
       }
@@ -1565,9 +1640,17 @@ export default function EventPage() {
                   </button>
                   <button
                     onClick={() => handleSendReminder()}
-                    className="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 bg-purple-100 text-purple-700 border border-purple-300 hover:bg-purple-200"
+                    disabled={isRemindButtonDisabled(selectedApplicant)}
+                    className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                      isRemindButtonDisabled(selectedApplicant)
+                        ? 'bg-gray-100 text-gray-500 border border-gray-300 cursor-not-allowed'
+                        : 'bg-purple-100 text-purple-700 border border-purple-300 hover:bg-purple-200'
+                    }`}
                   >
-                    Remind
+                    {isRemindButtonDisabled(selectedApplicant) 
+                      ? `Remind (${getRemainingCooldownTime(selectedApplicant)})`
+                      : 'Remind'
+                    }
                   </button>
                 </>
               )

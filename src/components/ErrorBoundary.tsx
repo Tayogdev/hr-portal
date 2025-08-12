@@ -1,9 +1,8 @@
 'use client';
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
-import Link from 'next/link';
+import { AlertTriangle } from 'lucide-react';
+import logger from '@/lib/logger';
 
 interface Props {
   children: ReactNode;
@@ -27,14 +26,12 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-    this.setState({ error, errorInfo });
+    logger.error('ErrorBoundary caught an error', error, 'ErrorBoundary', {
+      errorInfo,
+      componentStack: errorInfo.componentStack,
+    });
     
-    // Log error to external service in production
-    if (process.env.NODE_ENV === 'production') {
-      // Add your error logging service here (e.g., Sentry, LogRocket)
-      console.error('Production error:', { error: error.message, stack: error.stack, errorInfo });
-    }
+    this.setState({ error, errorInfo });
   }
 
   handleRetry = () => {
@@ -81,30 +78,20 @@ export default class ErrorBoundary extends Component<Props, State> {
               </details>
             )}
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button
+            <div className="flex gap-3 justify-center">
+              <button
                 onClick={this.handleRetry}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
               >
-                <RefreshCw className="w-4 h-4" />
                 Try Again
-              </Button>
+              </button>
               
-              <Link href="/dashboard">
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2 border-gray-300 hover:bg-gray-50"
-                >
-                  <Home className="w-4 h-4" />
-                  Go to Dashboard
-                </Button>
-              </Link>
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <p className="text-xs text-gray-500">
-                If this problem continues, please contact our support team.
-              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+              >
+                Refresh Page
+              </button>
             </div>
           </div>
         </div>

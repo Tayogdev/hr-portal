@@ -21,6 +21,7 @@ interface RegisteredEventQueryResult {
   zipCode: string | null;
   isTermsAccept: boolean;
   transactionId: string;
+  lastReminderSent: string | null; // Added for reminder cooldown
   // User details from join
   userEmail: string | null;
   userName: string | null;
@@ -53,6 +54,7 @@ interface FormattedRegisteredUser {
   gender?: string;
   maritalStatus?: boolean;
   zipCode?: string;
+  lastReminderSent?: string; // Added for reminder cooldown
 }
 
 export async function GET(
@@ -159,6 +161,7 @@ export async function GET(
         gender: user.gender || undefined,
         maritalStatus: user.maritalStatus || undefined,
         zipCode: user.zipCode || undefined,
+        lastReminderSent: user.lastReminderSent || undefined,
       };
     });
 

@@ -1,5 +1,6 @@
 import { getSession, signOut } from 'next-auth/react';
 import cacheManager from './cacheManager';
+import logger from './logger';
 
 interface SessionData {
   user: {
@@ -62,7 +63,7 @@ class SessionManager {
         this.handleSessionWarning(timeUntilExpiry);
       }
     } catch (error) {
-      console.error('Session check failed:', error);
+      logger.error('Session check failed', error as Error, 'SessionManager');
       this.handleSessionExpired();
     }
   }
@@ -71,7 +72,7 @@ class SessionManager {
    * Handle session expiration
    */
   private handleSessionExpired() {
-    console.log('Session expired, clearing cache and redirecting to login');
+    logger.info('Session expired, clearing cache and redirecting to login', 'SessionManager');
     this.clearSessionData();
     signOut({ callbackUrl: '/login' });
   }
@@ -81,7 +82,7 @@ class SessionManager {
    */
   private handleSessionWarning(timeUntilExpiry: number) {
     const minutesLeft = Math.ceil(timeUntilExpiry / (60 * 1000));
-    console.warn(`Session will expire in ${minutesLeft} minutes`);
+    logger.warn(`Session will expire in ${minutesLeft} minutes`, 'SessionManager');
     
     // You can show a user notification here
     this.showSessionWarning(minutesLeft);
@@ -179,7 +180,7 @@ class SessionManager {
       const session = await getSession();
       return session as SessionData | null;
     } catch (error) {
-      console.error('Failed to get session:', error);
+      logger.error('Failed to get session', error as Error, 'SessionManager');
       return null;
     }
   }
@@ -215,7 +216,7 @@ class SessionManager {
     try {
       await getSession({ force: true });
     } catch (error) {
-      console.error('Failed to refresh session:', error);
+      logger.error('Failed to refresh session', error as Error, 'SessionManager');
       this.handleSessionExpired();
     }
   }

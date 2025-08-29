@@ -33,13 +33,27 @@ export async function PUT(
     // The status field already exists in the registeredEvent table
 
     // Map status values to database values
-    const dbStatus = status === 'APPROVED' ? 'SHORTLISTED' : status === 'HOLD' ? 'HOLD' : 'REJECTED';
+    // const dbStatus = status === 'APPROVED' ? 'SHORTLISTED' : status === 'HOLD' ? 'HOLD' : 'REJECTED';
+    let dbStatus: string;
+     switch (status) {
+      case 'APPROVED':
+        dbStatus = 'SHORTLISTING';
+        break;
+      case 'HOLD':
+        dbStatus = 'HOLD';
+        break;
+      case 'REJECTED':
+        dbStatus = 'REJECTED';
+        break;
+      default:
+        dbStatus = 'REJECTED';
+     }
 
     // Update the applicant status in the database
     // applicantId is the registration ID (id field from registeredEvent table)
     const updateQuery = `
       UPDATE "registeredEvent" 
-      SET "status" = $1
+      SET "bookingStatus" = $1
       WHERE "eventId" = $2 AND "id" = $3
     `;
     

@@ -1574,7 +1574,7 @@ export default function EventPage() {
         <div className="mb-4">
           <h2 className="text-2xl font-bold text-gray-900 mb-1">{selectedApplicant.name}</h2>
           <p className="text-sm text-gray-700 mb-2">
-            {selectedApplicant.title || selectedApplicant.type}, Pursuing Bachelors of Design from IIT Hyderabad
+            {selectedApplicant.title || selectedApplicant.type} {selectedApplicant.organizationName ? `at ${selectedApplicant.organizationName}` : ''}
           </p>
 
           {/* Tags */}

@@ -10,6 +10,14 @@ import { usePageContext } from '@/components/PageContext';
 import { usePagesCache } from '@/lib/useCache';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
+interface Page {
+  id: string;
+  logo?: string | null;
+  title: string;
+  uName: string;
+  type: string;
+}
+
 const routeSegmentMap: Record<string, string> = {
   'dashboard': 'Dashboard',
   'job-listing': 'Job Listing',
@@ -24,7 +32,7 @@ const routeSegmentMap: Record<string, string> = {
 };
 
 export default function Header(): React.JSX.Element | null {
-  const { data: session, status } = useSession();
+  const { update, data: session, status } = useSession();
   const pathname = usePathname();
   const router = useRouter();
   const { startLoading } = useLoading();
@@ -40,6 +48,25 @@ export default function Header(): React.JSX.Element | null {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [loadingPageId, setLoadingPageId] = useState<string | null>(null);
   const [postDropdownOpen, setPostDropdownOpen] = useState(false);
+
+  const handleViewChange = async (page: Page) => {
+    try {
+      await update({
+        ...session,
+        view: {
+          name: page.title,
+          uName: page.uName,
+          logo: page.logo,
+          type: page.type,
+          id: page.id,
+        },
+      });
+      location.reload();
+    } catch (error) {
+      console.error("Error updating session:", error);
+    }
+  };
+
 
   useEffect(() => {
     const jobDetailPathMatch = pathname.match(/^\/job-listing\/([^/]+)/);
@@ -341,20 +368,21 @@ export default function Header(): React.JSX.Element | null {
                       onClick={async () => {
                         setLoadingPageId(page.id);
                         startLoading();
+                        handleViewChange(page);
                         setSheetOpen(false); // Close sheet immediately
                         
                         // Update the context and localStorage
                         setSelectedPageId(page.id);
                         
                         // Navigate based on current path
-                        if (pathname.startsWith('/events')) {
-                          router.push(`/events?pageId=${page.id}`);
-                        } else if (pathname.startsWith('/job-listing')) {
-                          router.push(`/job-listing?pageId=${page.id}`);
-                        } else {
-                          // Default to job-listing if not on a specific page
-                          router.push(`/job-listing?pageId=${page.id}`);
-                        }
+                        // if (pathname.startsWith('/events')) {
+                        //   router.push(`/events?pageId=${page.id}`);
+                        // } else if (pathname.startsWith('/job-listing')) {
+                        //   router.push(`/job-listing?pageId=${page.id}`);
+                        // } else {
+                        //   // Default to job-listing if not on a specific page
+                        //   router.push(`/job-listing?pageId=${page.id}`);
+                        // }
                       }}
                       disabled={loadingPageId === page.id}
                       className={`block w-full text-left border px-4 py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed ${

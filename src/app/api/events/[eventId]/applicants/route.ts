@@ -147,7 +147,15 @@ export async function GET(
           month: 'long',
           day: 'numeric'
         }),
-        status: user.status || 'PENDING' as const, // Use the status field for approval status
+        status: (() => {
+          // Map bookingStatus to status for UI consistency
+          if (user.bookingStatus === 'SHORTLISTING') return 'SHORTLISTED' as const;
+          if (user.bookingStatus === 'HOLD') return 'HOLD' as const;
+          if (user.bookingStatus === 'REJECTED') return 'REJECTED' as const;
+          if (user.bookingStatus === 'SUCCESS') return 'FINAL' as const;
+          if (user.bookingStatus === 'PENDING') return 'PENDING' as const;
+          return user.status || 'PENDING' as const;
+        })(),
         score: Math.min(score, 10), // Cap at 10
         profession: user.profession || undefined,
         organizationName: user.organizationName || undefined,

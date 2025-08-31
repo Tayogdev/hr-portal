@@ -3,10 +3,10 @@ import pool from '@/dbconfig/dbconfig';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { eventId: string; applicantId: string } }
+  { params }: { params: Promise<{ eventId: string; applicantId: string }>}
 ) {
   try {
-    const { eventId, applicantId } = params;
+    const { eventId, applicantId } = await params;
     const { bookingStatus } = await request.json();
     
 
@@ -24,7 +24,7 @@ export async function PUT(
     // Update the registered event with new booking status
     const updateQuery = `
       UPDATE "registeredEvent" 
-      SET "bookingStatus" = $1, "updatedAt" = NOW()
+      SET "bookingStatus" = $1
       WHERE "id" = $2 AND "eventId" = $3
     `;
     

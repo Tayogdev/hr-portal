@@ -33,25 +33,43 @@ export async function PUT(
     // The status field already exists in the registeredEvent table
 
     // Map status values to database values
-    const dbStatus = status === 'APPROVED' ? 'SHORTLISTED' : status === 'HOLD' ? 'HOLD' : 'REJECTED';
+    // const dbStatus = status === 'APPROVED' ? 'SHORTLISTED' : status === 'HOLD' ? 'HOLD' : 'REJECTED';
+    let dbStatus: string;
+     switch (status) {
+      case 'APPROVED':
+        dbStatus = 'SHORTLISTING';
+        break;
+      case 'HOLD':
+        dbStatus = 'HOLD';
+        break;
+      case 'REJECTED':
+        dbStatus = 'REJECTED';
+        break;
+      default:
+        dbStatus = 'REJECTED';
+     }
 
     // Update the applicant status in the database
     // applicantId is the registration ID (id field from registeredEvent table)
     const updateQuery = `
       UPDATE "registeredEvent" 
-      SET "status" = $1
+      SET "bookingStatus" = $1
       WHERE "eventId" = $2 AND "id" = $3
     `;
     
 
     const updateResult = await pool.query(updateQuery, [dbStatus, eventId, applicantId]);
     
-        if (updateResult.rowCount === 0) {
+    if (updateResult.rowCount === 0) {
       return NextResponse.json(
         { success: false, message: 'Applicant not found. No matching registration found.' },
         { status: 404 }
       );
     }
+    
+    // Verify the update was saved
+    const verifyQuery = `SELECT "bookingStatus" FROM "registeredEvent" WHERE "eventId" = $1 AND "id" = $2`;
+    const verifyResult = await pool.query(verifyQuery, [eventId, applicantId]);
 
     // Get event and applicant details for email
     const eventQuery = `

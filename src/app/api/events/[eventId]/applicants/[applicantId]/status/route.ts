@@ -60,12 +60,16 @@ export async function PUT(
 
     const updateResult = await pool.query(updateQuery, [dbStatus, eventId, applicantId]);
     
-        if (updateResult.rowCount === 0) {
+    if (updateResult.rowCount === 0) {
       return NextResponse.json(
         { success: false, message: 'Applicant not found. No matching registration found.' },
         { status: 404 }
       );
     }
+    
+    // Verify the update was saved
+    const verifyQuery = `SELECT "bookingStatus" FROM "registeredEvent" WHERE "eventId" = $1 AND "id" = $2`;
+    const verifyResult = await pool.query(verifyQuery, [eventId, applicantId]);
 
     // Get event and applicant details for email
     const eventQuery = `

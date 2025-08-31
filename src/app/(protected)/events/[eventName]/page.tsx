@@ -304,8 +304,8 @@ export default function EventPage() {
             profession?: string;
             organizationName?: string;
             phoneNo?: string;
-            state?: string;
-            country?: string;
+            state: string;
+            country: string;
             bookingStatus: string;
             // Questionnaire data fields
             firstName?: string;
@@ -313,34 +313,36 @@ export default function EventPage() {
             gender?: string;
             maritalStatus?: boolean;
             zipCode?: string;
-          }) => ({
-            id: user.id, // Use the original string ID from database
-            userId: user.userId, // Add userId for API calls
-            name: user.name,
-            image: user.image || '/avatar-placeholder.png',
-            type: user.type,
-            title: user.title || user.profession || 'Event Participant',
-            tags: user.tags || [],
-            appliedDate: user.appliedDate,
-            score: user.score || 5,
-            status: user.status || 'PENDING', // Use the status field directly
-            bookingStatus: user.bookingStatus, // Add bookingStatus for payment tracking
-            assignedTask: undefined, // You can add task assignment logic later
-            scheduledInterview: undefined, // You can add interview scheduling logic later
-            resumePath: undefined, // You can add resume upload logic later
-            email: user.email, // Add email
-            phoneNo: user.phoneNo, // Add phoneNo
-            state: user.state, // Add state
-            country: user.country, // Add country
-            organizationName: user.organizationName, // Add organizationName
-            // Questionnaire data fields
-            firstName: user.firstName,
-            lastName: user.lastName,
-            gender: user.gender,
-            maritalStatus: user.maritalStatus,
-            zipCode: user.zipCode,
-          }));
-          
+          }) => {
+            const transformed = {
+              id: user.id, // Use the original string ID from database
+              userId: user.userId, // Add userId for API calls
+              name: user.name,
+              image: user.image || '/avatar-placeholder.png',
+              type: user.type,
+              title: user.title || user.profession || 'Event Participant',
+              tags: user.tags || [],
+              appliedDate: user.appliedDate,
+              score: user.score || 5,
+              status: user.status || 'PENDING', // Use the status field directly
+              bookingStatus: user.bookingStatus, // Add bookingStatus for payment tracking
+              assignedTask: undefined, // You can add task assignment logic later
+              scheduledInterview: undefined, // You can add interview scheduling logic later
+              resumePath: undefined, // You can add resume upload logic later
+              email: user.email, // Add email
+              phoneNo: user.phoneNo, // Add phoneNo
+              state: user.state, // Add state
+              country: user.country, // Add country
+              organizationName: user.organizationName, // Add organizationName
+              // Questionnaire data fields
+              firstName: user.firstName,
+              lastName: user.lastName,
+              gender: user.gender,
+              maritalStatus: user.maritalStatus,
+              zipCode: user.zipCode,
+            };
+                         return transformed;
+           });
           setApplicants(transformedApplicants);
         } else {
           // Fallback to static data if API fails
@@ -622,14 +624,14 @@ export default function EventPage() {
         setApplicants(prev => 
           prev.map(applicant => 
             applicant.id.toString() === applicantId 
-              ? { ...applicant, status: 'SHORTLISTED' as const }
+              ? { ...applicant, status: 'SHORTLISTED' as const, bookingStatus: 'SHORTLISTING' }
               : applicant
           )
         );
         
         // Update selected applicant if it's the current one
         if (selectedApplicant.id.toString() === applicantId) {
-          setSelectedApplicant(prev => prev ? { ...prev, status: 'SHORTLISTED' as const } : null);
+          setSelectedApplicant(prev => prev ? { ...prev, status: 'SHORTLISTED' as const, bookingStatus: 'SHORTLISTING' } : null);
         }
         
         // Show payment initiation modal
@@ -955,14 +957,14 @@ export default function EventPage() {
         setApplicants(prev => 
           prev.map(applicant => 
             applicant.id.toString() === applicantId 
-              ? { ...applicant, status: 'REJECTED' as const }
+              ? { ...applicant, status: 'REJECTED' as const, bookingStatus: 'REJECTED' }
               : applicant
           )
         );
         
         // Update selected applicant if it's the current one
         if (selectedApplicant.id.toString() === applicantId) {
-          setSelectedApplicant(prev => prev ? { ...prev, status: 'REJECTED' as const } : null);
+          setSelectedApplicant(prev => prev ? { ...prev, status: 'REJECTED' as const, bookingStatus: 'REJECTED' } : null);
         }
         
         alert('Applicant rejected successfully! Email notification sent.');
@@ -994,14 +996,14 @@ export default function EventPage() {
         setApplicants(prev => 
           prev.map(applicant => 
             applicant.id.toString() === applicantId 
-              ? { ...applicant, status: 'HOLD' as const }
+              ? { ...applicant, status: 'HOLD' as const, bookingStatus: 'HOLD' }
               : applicant
           )
         );
         
         // Update selected applicant if it's the current one
         if (selectedApplicant.id.toString() === applicantId) {
-          setSelectedApplicant(prev => prev ? { ...prev, status: 'HOLD' as const } : null);
+          setSelectedApplicant(prev => prev ? { ...prev, status: 'HOLD' as const, bookingStatus: 'HOLD' } : null);
         }
         
         alert('Applicant put on hold successfully.');
@@ -1683,14 +1685,14 @@ export default function EventPage() {
           
           <button
             onClick={() => handleApproveApplicant(selectedApplicant.id.toString())}
-                  disabled={selectedApplicant.status === 'REJECTED'}
-              className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                    selectedApplicant.status === 'REJECTED'
-                      ? 'bg-gray-50 text-gray-600 border border-gray-200 cursor-not-allowed'
-                  : 'bg-blue-600 text-white border border-blue-600 hover:bg-blue-700 hover:border-blue-700'
+            disabled={selectedApplicant.status === 'REJECTED' || selectedApplicant.status === 'SHORTLISTED' || selectedApplicant.status === 'HOLD'}
+            className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
+              selectedApplicant.status === 'REJECTED' || selectedApplicant.status === 'SHORTLISTED' || selectedApplicant.status === 'HOLD'
+                ? 'bg-gray-50 text-gray-600 border border-gray-200 cursor-not-allowed'
+                : 'bg-blue-600 text-white border border-blue-600 hover:bg-blue-700 hover:border-blue-700'
             }`}
           >
-                  Approved
+            {selectedApplicant.status === 'SHORTLISTED' ? 'Approved' : 'Approve'}
           </button>
               </>
             )}

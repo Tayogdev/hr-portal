@@ -120,16 +120,11 @@ export const authOptions: NextAuthOptions = {
           );
 
           const dbUser = result.rows[0];
-          console.log("DB user fetched during Google sign-in:", dbUser);
+          
           if (!dbUser) {
-            console.log("Google login failed: user not found in DB");
             return false;
           }
           if (dbUser.accountStatus !== 0) {
-            console.log(
-              "Google login failed: account not active",
-              dbUser.accountStatus
-            );
             return false;
           }
 
@@ -141,7 +136,6 @@ export const authOptions: NextAuthOptions = {
           (user as any).image = dbUser.image ?? (user as any).image ?? null;
           (user as any).isRegistered = true;
 
-          console.log("signIn enriched user:", user);
           return true;
         } catch (error) {
           console.error("Database check error:", error);
@@ -176,6 +170,7 @@ export const authOptions: NextAuthOptions = {
         t.isRegistered = (user as any).isRegistered ?? t.isRegistered ?? false;
       }
 
+      // Only fetch from DB if we have email but missing user data
       if (t.email && (!t.uName || !t.role || !t.image || !t.id)) {
         try {
           const res = await pool.query(
@@ -190,7 +185,6 @@ export const authOptions: NextAuthOptions = {
             t.image = t.image ?? dbu.image ?? null;
             t.name = t.name ?? dbu.name ?? null;
           }
-          // console.log('jwt from DB:', { id: t.id, uName: t.uName, role: t.role, image: t.image, name: t.name });
         } catch (e) {
           console.error("jwt DB hydrate error:", e);
         }
@@ -210,8 +204,6 @@ export const authOptions: NextAuthOptions = {
         const s = session as unknown as CustomSession;
         if (s.view) t.view = s.view;
       }
-
-      // console.log('jwt token final:', t);
 
       return t;
     },
@@ -243,7 +235,6 @@ export const authOptions: NextAuthOptions = {
         },
       };
 
-      // console.log('session returned:', customSession);
       return customSession;
     },
   },

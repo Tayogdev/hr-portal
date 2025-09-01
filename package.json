@@ -8,7 +8,9 @@
     "lint": "next lint",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "dev": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192\" next dev --turbopack",
+    "dev": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192\" next dev",
+    "dev:turbo": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192\" next dev --turbopack",
+    "optimize": "node scripts/optimize-dev.js",
     "db:init": "node scripts/init-database.js"
   },
   "dependencies": {

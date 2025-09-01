@@ -1,6 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useMemo } from 'react';
+import { useSession } from 'next-auth/react';
+import { CustomSession } from '@/types/auth-interface';
 
 interface PageContextType {
   selectedPageId: string | null;
@@ -23,40 +25,32 @@ interface PageProviderProps {
 }
 
 export function PageProvider({ children }: PageProviderProps) {
-  const [selectedPageId, setSelectedPageIdState] = useState<string | null>(null);
+  const { data: session, status } = useSession();
+  const customSession = session as CustomSession;
 
-  // Load persisted selectedPageId from localStorage on mount
-  useEffect(() => {
-    const storedSelectedPageId = localStorage.getItem('selectedPageId');
-    
-    if (storedSelectedPageId) {
-      setSelectedPageIdState(storedSelectedPageId);
-    }
-  }, []);
+  // Memoize the context value to prevent unnecessary re-renders
+  const value: PageContextType = useMemo(() => {
+    // Get selectedPageId from session view instead of localStorage
+    const selectedPageId = customSession?.view?.id || null;
 
-  const setSelectedPageId = (pageId: string | null) => {
-    setSelectedPageIdState(pageId);
-    if (pageId) {
-      localStorage.setItem('selectedPageId', pageId);
-    } else {
-      localStorage.removeItem('selectedPageId');
-    }
-  };
+    const setSelectedPageId = (pageId: string | null) => {
+      
+    };
 
-  const clearSelectedPage = () => {
-    setSelectedPageIdState(null);
-    localStorage.removeItem('selectedPageId');
-  };
+    const clearSelectedPage = () => {
+      
+    };
 
-  const value: PageContextType = {
-    selectedPageId,
-    setSelectedPageId,
-    clearSelectedPage,
-  };
+    return {
+      selectedPageId,
+      setSelectedPageId,
+      clearSelectedPage,
+    };
+  }, [customSession?.view?.id]);
 
   return (
     <PageContext.Provider value={value}>
       {children}
     </PageContext.Provider>
   );
-} 
+}

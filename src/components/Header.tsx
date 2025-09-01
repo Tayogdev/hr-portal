@@ -6,9 +6,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Bell, Loader2 } from 'lucide-react';
 import { useLoading } from '@/components/LoadingProvider';
-import { usePageContext } from '@/components/PageContext';
 import { usePagesCache } from '@/lib/useCache';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ViewAs } from '@/types/auth-interface';
 
 interface Page {
   id: string;
@@ -31,12 +31,15 @@ const routeSegmentMap: Record<string, string> = {
   'events': 'Events',
 };
 
-export default function Header(): React.JSX.Element | null {
+interface HeaderProps {
+  currentView?: ViewAs;
+}
+
+export default function Header({ currentView }: HeaderProps): React.JSX.Element | null {
   const { update, data: session, status } = useSession();
   const pathname = usePathname();
   const router = useRouter();
   const { startLoading } = useLoading();
-  const { selectedPageId, setSelectedPageId } = usePageContext();
 
   // Use cache for pages data
   const { data: pages, loading: loadingPages } = usePagesCache();
@@ -51,6 +54,16 @@ export default function Header(): React.JSX.Element | null {
 
   const handleViewChange = async (page: Page) => {
     try {
+      setLoadingPageId(page.id);
+      startLoading();
+      
+      // Update URL first for immediate feedback
+      const currentPath = pathname;
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.set('pageId', page.id);
+      router.push(newUrl.pathname + newUrl.search);
+      
+      // Update session without reloading
       await update({
         ...session,
         view: {
@@ -61,9 +74,11 @@ export default function Header(): React.JSX.Element | null {
           id: page.id,
         },
       });
-      location.reload();
+      
+      setLoadingPageId(null);
     } catch (error) {
       console.error("Error updating session:", error);
+      setLoadingPageId(null);
     }
   };
 
@@ -369,24 +384,11 @@ export default function Header(): React.JSX.Element | null {
                         setLoadingPageId(page.id);
                         startLoading();
                         handleViewChange(page);
-                        setSheetOpen(false); // Close sheet immediately
-                        
-                        // Update the context and localStorage
-                        setSelectedPageId(page.id);
-                        
-                        // Navigate based on current path
-                        // if (pathname.startsWith('/events')) {
-                        //   router.push(`/events?pageId=${page.id}`);
-                        // } else if (pathname.startsWith('/job-listing')) {
-                        //   router.push(`/job-listing?pageId=${page.id}`);
-                        // } else {
-                        //   // Default to job-listing if not on a specific page
-                        //   router.push(`/job-listing?pageId=${page.id}`);
-                        // }
+                        setSheetOpen(false);
                       }}
                       disabled={loadingPageId === page.id}
                       className={`block w-full text-left border px-4 py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                        selectedPageId === page.id 
+                        currentView?.id === page.id 
                           ? 'bg-blue-50 border-blue-200 text-blue-900' 
                           : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                       }`}

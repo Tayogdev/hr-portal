@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useSession } from "next-auth/react";
+import { CustomSession } from "@/types/auth-interface";
 
 interface UsePageNameReturn {
   currentPageName: string | null;
@@ -6,6 +8,16 @@ interface UsePageNameReturn {
 
 export function usePageName(pageId: string | null): UsePageNameReturn {
   const [currentPageName, setCurrentPageName] = useState<string | null>(null);
+  const { data: session } = useSession();
+  const customSession = session as CustomSession;
+
+  // Memoize the session page name to avoid unnecessary re-renders
+  const sessionPageName = useMemo(() => {
+    if (customSession?.view?.id === pageId && customSession?.view?.name) {
+      return customSession.view.name;
+    }
+    return null;
+  }, [customSession?.view?.id, customSession?.view?.name, pageId]);
 
   // Fetch page name
   useEffect(() => {
@@ -14,12 +26,25 @@ export function usePageName(pageId: string | null): UsePageNameReturn {
       return;
     }
 
+    // First try to get name from session view if it matches the current pageId
+    if (sessionPageName) {
+      setCurrentPageName(sessionPageName);
+      return;
+    }
+
+    // Then check cache
     const cachedName = sessionStorage.getItem(`pageName_${pageId}`);
     if (cachedName) {
       setCurrentPageName(cachedName);
       return;
     }
 
+    // Only show loading state if we don't have any name yet
+    if (!currentPageName) {
+      setCurrentPageName(null);
+    }
+
+    // Finally fetch from API
     fetch(`/api/pages/${pageId}`)
       .then((res) => res.json())
       .then((data) => {
@@ -32,7 +57,7 @@ export function usePageName(pageId: string | null): UsePageNameReturn {
         // Set a fallback name if API fails
         setCurrentPageName("Events");
       });
-  }, [pageId]);
+  }, [pageId, sessionPageName, currentPageName]);
 
   return {
     currentPageName,

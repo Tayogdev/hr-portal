@@ -39,7 +39,7 @@ export default function Header({ currentView }: HeaderProps): React.JSX.Element 
   const { update, data: session, status } = useSession();
   const pathname = usePathname();
   const router = useRouter();
-  const { startLoading } = useLoading();
+  const { startLoading, stopLoading } = useLoading();
 
   // Use cache for pages data
   const { data: pages, loading: loadingPages } = usePagesCache();
@@ -76,9 +76,11 @@ export default function Header({ currentView }: HeaderProps): React.JSX.Element 
       });
       
       setLoadingPageId(null);
+      stopLoading(); // Stop the global loading state
     } catch (error) {
       console.error("Error updating session:", error);
       setLoadingPageId(null);
+      stopLoading(); // Stop loading even on error
     }
   };
 

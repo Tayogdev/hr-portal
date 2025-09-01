@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Button } from './ui/button';
-import PaymentGatewayModal from './PaymentGatewayModal';
+import React, { useState, useEffect } from "react";
+import { Button } from "../ui/button";
+import PaymentGatewayModal from "../PaymentGatewayModal";
 
 interface EventData {
   id: string;
@@ -18,7 +18,7 @@ interface EventData {
 }
 
 interface PaymentGatewayConfig {
-  gateway: 'stripe' | 'razorpay' | 'paypal' | 'custom';
+  gateway: "stripe" | "razorpay" | "paypal" | "custom";
   apiKey?: string;
   secretKey?: string;
   webhookUrl?: string;
@@ -33,28 +33,33 @@ interface EditEventModalProps {
   onSave: (updatedData: EventData) => void;
 }
 
-export default function EditEventModal({ isOpen, onClose, eventData, onSave }: EditEventModalProps) {
+export default function EditEventModal({
+  isOpen,
+  onClose,
+  eventData,
+  onSave,
+}: EditEventModalProps) {
   const [formData, setFormData] = useState<EventData>({
-    id: '',
-    title: '',
-    description: '',
-    startDate: '',
-    endDate: '',
-    regStartDate: '',
-    regEndDate: '',
-    website: '',
-    email: '',
-    contact: ''
+    id: "",
+    title: "",
+    description: "",
+    startDate: "",
+    endDate: "",
+    regStartDate: "",
+    regEndDate: "",
+    website: "",
+    email: "",
+    contact: "",
   });
   const [loading, setLoading] = useState(false);
   const [showPaymentGateway, setShowPaymentGateway] = useState(false);
   const [paymentConfig, setPaymentConfig] = useState<PaymentGatewayConfig>({
-    gateway: 'stripe',
-    apiKey: '',
-    secretKey: '',
-    webhookUrl: '',
-    currency: 'INR',
-    isEnabled: false
+    gateway: "stripe",
+    apiKey: "",
+    secretKey: "",
+    webhookUrl: "",
+    currency: "INR",
+    isEnabled: false,
   });
 
   // Update form data when eventData changes
@@ -62,43 +67,61 @@ export default function EditEventModal({ isOpen, onClose, eventData, onSave }: E
     if (eventData) {
       setFormData({
         id: eventData.id,
-        title: eventData.title || '',
-        description: eventData.description || '',
-        startDate: eventData.startDate ? new Date(eventData.startDate).toISOString().split('T')[0] : '',
-        endDate: eventData.endDate ? new Date(eventData.endDate).toISOString().split('T')[0] : '',
-        regStartDate: eventData.regStartDate ? new Date(eventData.regStartDate).toISOString().split('T')[0] : '',
-        regEndDate: eventData.regEndDate ? new Date(eventData.regEndDate).toISOString().split('T')[0] : '',
-        website: eventData.website || '',
-        email: eventData.email || '',
-        contact: eventData.contact || ''
+        title: eventData.title || "",
+        description: eventData.description || "",
+        startDate: eventData.startDate
+          ? new Date(eventData.startDate).toISOString().split("T")[0]
+          : "",
+        endDate: eventData.endDate
+          ? new Date(eventData.endDate).toISOString().split("T")[0]
+          : "",
+        regStartDate: eventData.regStartDate
+          ? new Date(eventData.regStartDate).toISOString().split("T")[0]
+          : "",
+        regEndDate: eventData.regEndDate
+          ? new Date(eventData.regEndDate).toISOString().split("T")[0]
+          : "",
+        website: eventData.website || "",
+        email: eventData.email || "",
+        contact: eventData.contact || "",
       });
     }
   }, [eventData]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       // Convert date strings back to ISO format
       const updatedData = {
         ...formData,
-        startDate: formData.startDate ? new Date(formData.startDate).toISOString() : '',
-        endDate: formData.endDate ? new Date(formData.endDate).toISOString() : '',
-        regStartDate: formData.regStartDate ? new Date(formData.regStartDate).toISOString() : '',
-        regEndDate: formData.regEndDate ? new Date(formData.regEndDate).toISOString() : ''
+        startDate: formData.startDate
+          ? new Date(formData.startDate).toISOString()
+          : "",
+        endDate: formData.endDate
+          ? new Date(formData.endDate).toISOString()
+          : "",
+        regStartDate: formData.regStartDate
+          ? new Date(formData.regStartDate).toISOString()
+          : "",
+        regEndDate: formData.regEndDate
+          ? new Date(formData.regEndDate).toISOString()
+          : "",
       };
-      
+
       await onSave(updatedData);
       onClose();
     } catch (error) {
-      console.error('Error saving event:', error);
-      alert('Failed to save event. Please try again.');
+      console.error("Error saving event:", error);
+      alert("Failed to save event. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -258,7 +281,9 @@ export default function EditEventModal({ isOpen, onClose, eventData, onSave }: E
           {/* Payment Gateway Configuration */}
           <div className="border-t pt-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Payment Gateway</h3>
+              <h3 className="text-lg font-medium text-gray-900">
+                Payment Gateway
+              </h3>
               <Button
                 type="button"
                 variant="outline"
@@ -270,10 +295,9 @@ export default function EditEventModal({ isOpen, onClose, eventData, onSave }: E
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-600">
-                {paymentConfig.isEnabled 
+                {paymentConfig.isEnabled
                   ? `Payment gateway is enabled (${paymentConfig.gateway.toUpperCase()})`
-                  : 'Payment gateway is not configured. Click the button above to set up payment processing.'
-                }
+                  : "Payment gateway is not configured. Click the button above to set up payment processing."}
               </p>
             </div>
           </div>
@@ -293,7 +317,7 @@ export default function EditEventModal({ isOpen, onClose, eventData, onSave }: E
               disabled={loading}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              {loading ? 'Saving...' : 'Save Changes'}
+              {loading ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </form>
@@ -311,4 +335,4 @@ export default function EditEventModal({ isOpen, onClose, eventData, onSave }: E
       </div>
     </div>
   );
-} 
+}

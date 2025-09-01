@@ -1,6 +1,6 @@
 'use client';
 
-import JobListingPage from "../pages/joblistingmodule/JobListingPage";
+import JobListingPage from "./Result";
 
 export default function Page() {
   return <JobListingPage />;

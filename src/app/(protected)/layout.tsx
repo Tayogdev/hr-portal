@@ -1,4 +1,4 @@
-import CustomNavbar from './sidebar/CustomNavbar';
+import CustomSidebar from '@/components/CustomSidebar';
 import Header from '@/components/Header';
 import { LoadingProvider } from '@/components/LoadingProvider';
 import { PageProvider } from '@/components/PageContext';
@@ -16,7 +16,7 @@ export default async function ProtectedGroupLayout({
       <PageProvider>
         <div className="flex h-screen overflow-hidden bg-gray-50">
           {/* Fixed Sidebar */}
-          <CustomNavbar />
+          <CustomSidebar />
 
           {/* Main content area with proper margin for fixed sidebar */}
           <div className="flex-1 flex flex-col ml-0 md:ml-64 overflow-hidden">

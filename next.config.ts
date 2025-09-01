@@ -25,6 +25,15 @@ const nextConfig = {
     workerThreads: false,
     cpus: 1,
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    // Turbopack specific configurations
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
   },
   // Production optimizations
   compiler: {
@@ -36,9 +45,10 @@ const nextConfig = {
   // Performance optimizations
   poweredByHeader: false,
   compress: true,
-  // Webpack configuration to handle Node.js modules
+  // Webpack configuration to handle Node.js modules (only for production builds)
   webpack: (config, { isServer, dev }) => {
-    if (!isServer) {
+    // Only apply webpack config for production builds or when not using Turbopack
+    if (!isServer && !dev) {
       // Don't attempt to load Node.js modules on the client side
       config.resolve.fallback = {
         ...config.resolve.fallback,

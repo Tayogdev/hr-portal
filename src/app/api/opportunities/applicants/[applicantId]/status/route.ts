@@ -11,7 +11,6 @@ import { type NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { EmailNotifications } from '@/lib/emailService';
 import { getApplicantDataByApplicantId } from '@/lib/emailHelpers';
-import { invalidateCache } from '@/lib/cacheManager';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,9 +109,6 @@ export async function PUT(
         }
       });
     }
-
-    // Invalidate applicants cache
-    invalidateCache.applicants();
 
     return NextResponse.json({
       success: true,

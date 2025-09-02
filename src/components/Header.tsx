@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Bell, Loader2 } from 'lucide-react';
 import { useLoading } from '@/components/LoadingProvider';
-import { usePagesCache } from '@/lib/useCache';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ViewAs } from '@/types/auth-interface';
 
@@ -41,8 +40,9 @@ export default function Header({ currentView }: HeaderProps): React.JSX.Element 
   const router = useRouter();
   const { startLoading, stopLoading } = useLoading();
 
-  // Use cache for pages data
-  const { data: pages, loading: loadingPages } = usePagesCache();
+  // Direct API call for pages data
+  const [pages, setPages] = useState<any[]>([]);
+  const [loadingPages, setLoadingPages] = useState(false);
 
   const [currentJobTitle, setCurrentJobTitle] = useState<string | null>(null);
   const [loadingJobTitle, setLoadingJobTitle] = useState<boolean>(false);
@@ -50,6 +50,31 @@ export default function Header({ currentView }: HeaderProps): React.JSX.Element 
   const [loadingEventTitle, setLoadingEventTitle] = useState<boolean>(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [loadingPageId, setLoadingPageId] = useState<string | null>(null);
+
+  const fetchPages = useCallback(async () => {
+    if (!session?.user?.id) return;
+    
+    try {
+      setLoadingPages(true);
+      const response = await fetch('/api/pages');
+      const data = await response.json();
+      if (data.success) {
+        setPages(data.pages || []);
+      } else {
+        setPages([]);
+      }
+    } catch (error) {
+      console.error('Error fetching pages:', error);
+      setPages([]);
+    } finally {
+      setLoadingPages(false);
+    }
+  }, [session?.user?.id]);
+
+  // Fetch pages when session changes
+  useEffect(() => {
+    fetchPages();
+  }, [fetchPages]);
   const [postDropdownOpen, setPostDropdownOpen] = useState(false);
 
   const handleViewChange = async (page: Page) => {
@@ -58,7 +83,6 @@ export default function Header({ currentView }: HeaderProps): React.JSX.Element 
       startLoading();
       
       // Update URL first for immediate feedback
-      const currentPath = pathname;
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.set('pageId', page.id);
       router.push(newUrl.pathname + newUrl.search);
@@ -76,11 +100,11 @@ export default function Header({ currentView }: HeaderProps): React.JSX.Element 
       });
       
       setLoadingPageId(null);
-      stopLoading(); // Stop the global loading state
+      stopLoading();
     } catch (error) {
       console.error("Error updating session:", error);
       setLoadingPageId(null);
-      stopLoading(); // Stop loading even on error
+      stopLoading();
     }
   };
 
@@ -171,34 +195,6 @@ export default function Header({ currentView }: HeaderProps): React.JSX.Element 
     };
   }, [postDropdownOpen]);
 
-  // Fetch pages on mount with caching
-  useEffect(() => {
-    const fetchPages = async () => {
-      try {
-        // Check if we already have pages cached
-        const cachedPages = sessionStorage.getItem('cachedPages');
-        const cacheTime = sessionStorage.getItem('cachedPagesTime');
-        const now = Date.now();
-        
-        // Use cache if it's less than 5 minutes old
-        if (cachedPages && cacheTime && (now - parseInt(cacheTime)) < 5 * 60 * 1000) {
-          return;
-        }
-
-        const res = await fetch('/api/pages');
-        const data = await res.json();
-        if (data.success) {
-          // Cache the pages for 5 minutes
-          sessionStorage.setItem('cachedPages', JSON.stringify(data.pages));
-          sessionStorage.setItem('cachedPagesTime', now.toString());
-        }
-      } catch {
-        // Silently handle page fetch error
-      }
-    };
-
-    fetchPages();
-  }, []);
 
   if (status === 'loading' || !session) {
     // Show loading skeleton instead of null
@@ -368,7 +364,7 @@ export default function Header({ currentView }: HeaderProps): React.JSX.Element 
                     <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
                     <span className="ml-2 text-sm text-gray-600">Loading organizations...</span>
                   </div>
-                ) : pages.length === 0 ? (
+                ) : !pages || pages.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
                       <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -379,7 +375,7 @@ export default function Header({ currentView }: HeaderProps): React.JSX.Element 
                     <p className="text-xs text-gray-400 mt-1">Create an organization first to get started.</p>
                   </div>
                 ) : (
-                  pages.map((page: { id: string; title: string; uName: string; logo?: string; type: string }) => (
+                  (pages || []).map((page: { id: string; title: string; uName: string; logo?: string; type: string }) => (
                     <button
                       key={page.id}
                       onClick={async () => {

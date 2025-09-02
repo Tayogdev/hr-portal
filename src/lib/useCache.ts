@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
 import cacheManager, { CACHE_KEYS, invalidateCache } from './cacheManager';
 
 interface UseCacheOptions {
@@ -95,15 +96,23 @@ export function useApiCache<T>(
  * Hook for managing pages data with cache
  */
 export function usePagesCache() {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  
   return useCache(
-    CACHE_KEYS.PAGES,
+    userId ? CACHE_KEYS.PAGES(userId) : 'no-user-pages',
     async () => {
+      if (!userId) throw new Error('User not authenticated');
       const response = await fetch('/api/pages');
       const data = await response.json();
       if (!data.success) throw new Error(data.message);
       return data.pages;
     },
-    { ttl: 10 * 60 * 1000 } // 10 minutes
+    { 
+      ttl: 10 * 60 * 1000, // 10 minutes
+      enabled: !!userId,
+      dependencies: [userId]
+    }
   );
 }
 
@@ -111,9 +120,13 @@ export function usePagesCache() {
  * Hook for managing events data with cache
  */
 export function useEventsCache(pageId: string) {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  
   return useCache(
-    CACHE_KEYS.EVENTS(pageId),
+    userId ? CACHE_KEYS.EVENTS(userId, pageId) : 'no-user-events',
     async () => {
+      if (!userId) throw new Error('User not authenticated');
       const response = await fetch(`/api/events?pageId=${pageId}`);
       const data = await response.json();
       if (!data.success) throw new Error(data.message);
@@ -121,7 +134,8 @@ export function useEventsCache(pageId: string) {
     },
     { 
       ttl: 5 * 60 * 1000, // 5 minutes
-      dependencies: [pageId]
+      enabled: !!userId && !!pageId,
+      dependencies: [userId, pageId]
     }
   );
 }
@@ -130,9 +144,13 @@ export function useEventsCache(pageId: string) {
  * Hook for managing opportunities data with cache
  */
 export function useOpportunitiesCache(pageId: string) {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  
   return useCache(
-    CACHE_KEYS.OPPORTUNITIES(pageId),
+    userId ? CACHE_KEYS.OPPORTUNITIES(userId, pageId) : 'no-user-opportunities',
     async () => {
+      if (!userId) throw new Error('User not authenticated');
       const response = await fetch(`/api/opportunities?pageId=${pageId}`);
       const data = await response.json();
       if (!data.success) throw new Error(data.message);
@@ -140,7 +158,8 @@ export function useOpportunitiesCache(pageId: string) {
     },
     { 
       ttl: 5 * 60 * 1000, // 5 minutes
-      dependencies: [pageId]
+      enabled: !!userId && !!pageId,
+      dependencies: [userId, pageId]
     }
   );
 }
@@ -149,15 +168,23 @@ export function useOpportunitiesCache(pageId: string) {
  * Hook for managing applicants data with cache
  */
 export function useApplicantsCache() {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  
   return useCache(
-    CACHE_KEYS.APPLICANTS,
+    userId ? CACHE_KEYS.APPLICANTS(userId) : 'no-user-applicants',
     async () => {
+      if (!userId) throw new Error('User not authenticated');
       const response = await fetch('/api/opportunities/applicants');
       const data = await response.json();
       if (!data.success) throw new Error(data.message);
       return data.applicants;
     },
-    { ttl: 3 * 60 * 1000 } // 3 minutes
+    { 
+      ttl: 3 * 60 * 1000, // 3 minutes
+      enabled: !!userId,
+      dependencies: [userId]
+    }
   );
 }
 
@@ -165,9 +192,13 @@ export function useApplicantsCache() {
  * Hook for managing event details with cache
  */
 export function useEventDetailsCache(eventId: string) {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  
   return useCache(
-    CACHE_KEYS.EVENT_DETAILS(eventId),
+    userId ? CACHE_KEYS.EVENT_DETAILS(userId, eventId) : 'no-user-event-details',
     async () => {
+      if (!userId) throw new Error('User not authenticated');
       const response = await fetch(`/api/events/${eventId}`);
       const data = await response.json();
       if (!data.success) throw new Error(data.message);
@@ -175,7 +206,8 @@ export function useEventDetailsCache(eventId: string) {
     },
     { 
       ttl: 5 * 60 * 1000, // 5 minutes
-      dependencies: [eventId]
+      enabled: !!userId && !!eventId,
+      dependencies: [userId, eventId]
     }
   );
 }
@@ -184,9 +216,13 @@ export function useEventDetailsCache(eventId: string) {
  * Hook for managing opportunity details with cache
  */
 export function useOpportunityDetailsCache(opportunityId: string) {
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  
   return useCache(
-    CACHE_KEYS.OPPORTUNITY_DETAILS(opportunityId),
+    userId ? CACHE_KEYS.OPPORTUNITY_DETAILS(userId, opportunityId) : 'no-user-opportunity-details',
     async () => {
+      if (!userId) throw new Error('User not authenticated');
       const response = await fetch(`/api/opportunities/${opportunityId}`);
       const data = await response.json();
       if (!data.success) throw new Error(data.message);
@@ -194,10 +230,11 @@ export function useOpportunityDetailsCache(opportunityId: string) {
     },
     { 
       ttl: 5 * 60 * 1000, // 5 minutes
-      dependencies: [opportunityId]
+      enabled: !!userId && !!opportunityId,
+      dependencies: [userId, opportunityId]
     }
   );
 }
 
 // Export cache utilities
-export { cacheManager, CACHE_KEYS, invalidateCache }; 
+export { cacheManager, CACHE_KEYS, invalidateCache };

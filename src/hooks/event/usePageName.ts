@@ -26,35 +26,23 @@ export function usePageName(pageId: string | null): UsePageNameReturn {
       return;
     }
 
-    // First try to get name from session view if it matches the current pageId
     if (sessionPageName) {
       setCurrentPageName(sessionPageName);
       return;
     }
 
-    // Then check cache
-    const cachedName = sessionStorage.getItem(`pageName_${pageId}`);
-    if (cachedName) {
-      setCurrentPageName(cachedName);
-      return;
-    }
-
-    // Only show loading state if we don't have any name yet
     if (!currentPageName) {
       setCurrentPageName(null);
     }
 
-    // Finally fetch from API
     fetch(`/api/pages/${pageId}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.page) {
           setCurrentPageName(data.page.title);
-          sessionStorage.setItem(`pageName_${pageId}`, data.page.title);
         }
       })
       .catch(() => {
-        // Set a fallback name if API fails
         setCurrentPageName("Events");
       });
   }, [pageId, sessionPageName, currentPageName]);

@@ -15,4 +15,4 @@ export default function SessionWrapper({ children }: { children: ReactNode }) {
       {children}
     </SessionProvider>
   );
-} 
+}

@@ -1,14 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Bell, Loader2 } from 'lucide-react';
 import { useLoading } from '@/components/LoadingProvider';
-import { usePageContext } from '@/components/PageContext';
-import { usePagesCache } from '@/lib/useCache';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ViewAs } from '@/types/auth-interface';
 
 interface Page {
   id: string;
@@ -31,15 +30,19 @@ const routeSegmentMap: Record<string, string> = {
   'events': 'Events',
 };
 
-export default function Header(): React.JSX.Element | null {
+interface HeaderProps {
+  currentView?: ViewAs;
+}
+
+export default function Header({ currentView }: HeaderProps): React.JSX.Element | null {
   const { update, data: session, status } = useSession();
   const pathname = usePathname();
   const router = useRouter();
-  const { startLoading } = useLoading();
-  const { selectedPageId, setSelectedPageId } = usePageContext();
+  const { startLoading, stopLoading } = useLoading();
 
-  // Use cache for pages data
-  const { data: pages, loading: loadingPages } = usePagesCache();
+  // Direct API call for pages data
+  const [pages, setPages] = useState<any[]>([]);
+  const [loadingPages, setLoadingPages] = useState(false);
 
   const [currentJobTitle, setCurrentJobTitle] = useState<string | null>(null);
   const [loadingJobTitle, setLoadingJobTitle] = useState<boolean>(false);
@@ -47,10 +50,44 @@ export default function Header(): React.JSX.Element | null {
   const [loadingEventTitle, setLoadingEventTitle] = useState<boolean>(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [loadingPageId, setLoadingPageId] = useState<string | null>(null);
+
+  const fetchPages = useCallback(async () => {
+    if (!session?.user?.id) return;
+    
+    try {
+      setLoadingPages(true);
+      const response = await fetch('/api/pages');
+      const data = await response.json();
+      if (data.success) {
+        setPages(data.pages || []);
+      } else {
+        setPages([]);
+      }
+    } catch (error) {
+      console.error('Error fetching pages:', error);
+      setPages([]);
+    } finally {
+      setLoadingPages(false);
+    }
+  }, [session?.user?.id]);
+
+  // Fetch pages when session changes
+  useEffect(() => {
+    fetchPages();
+  }, [fetchPages]);
   const [postDropdownOpen, setPostDropdownOpen] = useState(false);
 
   const handleViewChange = async (page: Page) => {
     try {
+      setLoadingPageId(page.id);
+      startLoading();
+      
+      // Update URL first for immediate feedback
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.set('pageId', page.id);
+      router.push(newUrl.pathname + newUrl.search);
+      
+      // Update session without reloading
       await update({
         ...session,
         view: {
@@ -61,9 +98,13 @@ export default function Header(): React.JSX.Element | null {
           id: page.id,
         },
       });
-      location.reload();
+      
+      setLoadingPageId(null);
+      stopLoading();
     } catch (error) {
       console.error("Error updating session:", error);
+      setLoadingPageId(null);
+      stopLoading();
     }
   };
 
@@ -154,34 +195,6 @@ export default function Header(): React.JSX.Element | null {
     };
   }, [postDropdownOpen]);
 
-  // Fetch pages on mount with caching
-  useEffect(() => {
-    const fetchPages = async () => {
-      try {
-        // Check if we already have pages cached
-        const cachedPages = sessionStorage.getItem('cachedPages');
-        const cacheTime = sessionStorage.getItem('cachedPagesTime');
-        const now = Date.now();
-        
-        // Use cache if it's less than 5 minutes old
-        if (cachedPages && cacheTime && (now - parseInt(cacheTime)) < 5 * 60 * 1000) {
-          return;
-        }
-
-        const res = await fetch('/api/pages');
-        const data = await res.json();
-        if (data.success) {
-          // Cache the pages for 5 minutes
-          sessionStorage.setItem('cachedPages', JSON.stringify(data.pages));
-          sessionStorage.setItem('cachedPagesTime', now.toString());
-        }
-      } catch {
-        // Silently handle page fetch error
-      }
-    };
-
-    fetchPages();
-  }, []);
 
   if (status === 'loading' || !session) {
     // Show loading skeleton instead of null
@@ -351,7 +364,7 @@ export default function Header(): React.JSX.Element | null {
                     <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
                     <span className="ml-2 text-sm text-gray-600">Loading organizations...</span>
                   </div>
-                ) : pages.length === 0 ? (
+                ) : !pages || pages.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
                       <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -362,31 +375,18 @@ export default function Header(): React.JSX.Element | null {
                     <p className="text-xs text-gray-400 mt-1">Create an organization first to get started.</p>
                   </div>
                 ) : (
-                  pages.map((page: { id: string; title: string; uName: string; logo?: string; type: string }) => (
+                  (pages || []).map((page: { id: string; title: string; uName: string; logo?: string; type: string }) => (
                     <button
                       key={page.id}
                       onClick={async () => {
                         setLoadingPageId(page.id);
                         startLoading();
                         handleViewChange(page);
-                        setSheetOpen(false); // Close sheet immediately
-                        
-                        // Update the context and localStorage
-                        setSelectedPageId(page.id);
-                        
-                        // Navigate based on current path
-                        // if (pathname.startsWith('/events')) {
-                        //   router.push(`/events?pageId=${page.id}`);
-                        // } else if (pathname.startsWith('/job-listing')) {
-                        //   router.push(`/job-listing?pageId=${page.id}`);
-                        // } else {
-                        //   // Default to job-listing if not on a specific page
-                        //   router.push(`/job-listing?pageId=${page.id}`);
-                        // }
+                        setSheetOpen(false);
                       }}
                       disabled={loadingPageId === page.id}
                       className={`block w-full text-left border px-4 py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                        selectedPageId === page.id 
+                        currentView?.id === page.id 
                           ? 'bg-blue-50 border-blue-200 text-blue-900' 
                           : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                       }`}

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/dbconfig/dbconfig';
 import { validateAPIRouteAndGetUserId } from '@/lib/utils';
-import { invalidateCache } from '@/lib/cacheManager';
 
 interface OpportunityQueryResult {
   id: string;
@@ -203,8 +202,6 @@ export async function PUT(
 
     const updatedOpportunity = updateResult.rows[0];
 
-    // Invalidate related cache
-    invalidateCache.opportunity(opportunityId);
 
     return NextResponse.json({
       success: true,

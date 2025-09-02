@@ -2,7 +2,7 @@
 'use client';
 
 import React from 'react';
-import ApplicantsPage from '../pages/allapplicantsmodule/ApplicantsPage';
+import ApplicantsPage from './Result';
 
 export default function Page(): React.JSX.Element {
   return <ApplicantsPage />;

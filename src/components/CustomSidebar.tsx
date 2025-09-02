@@ -29,7 +29,7 @@ type NavItem = {
   icon: React.JSX.Element;
 };
 
-export default function CustomNavbar(): React.JSX.Element {
+export default function CustomSidebar(): React.JSX.Element {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);

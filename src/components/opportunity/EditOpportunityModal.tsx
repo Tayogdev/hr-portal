@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Button } from './ui/button';
+import React, { useState, useEffect } from "react";
+import { Button } from "../ui/button";
 
 interface OpportunityData {
   id: string;
@@ -24,72 +24,89 @@ interface EditOpportunityModalProps {
   onSave: (updatedData: OpportunityData) => void;
 }
 
-export default function EditOpportunityModal({ isOpen, onClose, opportunityData, onSave }: EditOpportunityModalProps) {
+export default function EditOpportunityModal({
+  isOpen,
+  onClose,
+  opportunityData,
+  onSave,
+}: EditOpportunityModalProps) {
   const [formData, setFormData] = useState<OpportunityData>({
-    id: '',
-    role: '',
-    title: '',
-    department: '',
-    location: '',
-    description: '',
-    stipend: '',
+    id: "",
+    role: "",
+    title: "",
+    department: "",
+    location: "",
+    description: "",
+    stipend: "",
     vacancies: 1,
     maxParticipants: 1,
-    regStartDate: '',
-    regEndDate: ''
+    regStartDate: "",
+    regEndDate: "",
   });
   const [loading, setLoading] = useState(false);
 
   // Update form data when opportunityData changes
   useEffect(() => {
     if (opportunityData) {
-      console.log('EditOpportunityModal received data:', opportunityData);
+      console.log("EditOpportunityModal received data:", opportunityData);
       setFormData({
         id: opportunityData.id,
-        role: opportunityData.role || '',
-        title: opportunityData.title || '',
-        department: opportunityData.department || '',
-        location: opportunityData.location || '',
-        description: opportunityData.description || '',
-        stipend: opportunityData.stipend || '',
+        role: opportunityData.role || "",
+        title: opportunityData.title || "",
+        department: opportunityData.department || "",
+        location: opportunityData.location || "",
+        description: opportunityData.description || "",
+        stipend: opportunityData.stipend || "",
         vacancies: opportunityData.vacancies || 1,
         maxParticipants: opportunityData.maxParticipants || 1,
-        regStartDate: opportunityData.regStartDate ? new Date(opportunityData.regStartDate).toISOString().split('T')[0] : '',
-        regEndDate: opportunityData.regEndDate ? new Date(opportunityData.regEndDate).toISOString().split('T')[0] : ''
+        regStartDate: opportunityData.regStartDate
+          ? new Date(opportunityData.regStartDate).toISOString().split("T")[0]
+          : "",
+        regEndDate: opportunityData.regEndDate
+          ? new Date(opportunityData.regEndDate).toISOString().split("T")[0]
+          : "",
       });
     }
   }, [opportunityData]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
     const { name, value, type } = e.target;
-    
-    if (type === 'checkbox') {
+
+    if (type === "checkbox") {
       const checked = (e.target as HTMLInputElement).checked;
-      setFormData(prev => ({ ...prev, [name]: checked }));
-    } else if (type === 'number') {
-      setFormData(prev => ({ ...prev, [name]: parseInt(value) || 0 }));
+      setFormData((prev) => ({ ...prev, [name]: checked }));
+    } else if (type === "number") {
+      setFormData((prev) => ({ ...prev, [name]: parseInt(value) || 0 }));
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       // Convert date strings back to ISO format
       const updatedData = {
         ...formData,
-        regStartDate: formData.regStartDate ? new Date(formData.regStartDate).toISOString() : '',
-        regEndDate: formData.regEndDate ? new Date(formData.regEndDate).toISOString() : '',
+        regStartDate: formData.regStartDate
+          ? new Date(formData.regStartDate).toISOString()
+          : "",
+        regEndDate: formData.regEndDate
+          ? new Date(formData.regEndDate).toISOString()
+          : "",
       };
-      
+
       await onSave(updatedData);
       onClose();
     } catch (error) {
-      console.error('Error saving opportunity:', error);
-      alert('Failed to save opportunity. Please try again.');
+      console.error("Error saving opportunity:", error);
+      alert("Failed to save opportunity. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -277,11 +294,11 @@ export default function EditOpportunityModal({ isOpen, onClose, opportunityData,
               disabled={loading}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              {loading ? 'Saving...' : 'Save Changes'}
+              {loading ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </form>
       </div>
     </div>
   );
-} 
+}

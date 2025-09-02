@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import ReviewFilterButton from './ReviewFilterButton';
-import AdvancedFilterModal from './AdvancedFilterModal';
+import ReviewFilterButton from '@/components/all-applicants/ReviewFilterButton';
+import AdvancedFilterModal from '@/components/all-applicants/AdvancedFilterModal';
 import { useRouter } from 'next/navigation';
 
 import { TableSkeleton } from '@/components/ui/loading-skeleton';

@@ -18,6 +18,7 @@ interface CacheConfig {
 class CacheManager {
   private cache = new Map<string, CacheItem<any>>();
   private config: CacheConfig;
+  private currentUserId: string | null = null;
 
   constructor(config: Partial<CacheConfig> = {}) {
     this.config = {
@@ -27,13 +28,25 @@ class CacheManager {
       ...config
     };
 
-    // Load persisted cache on initialization
-    if (this.config.enablePersistence && typeof window !== 'undefined') {
-      this.loadFromStorage();
-    }
-
+    // Don't load persisted cache on initialization - wait for user context
     // Clean up expired items periodically
     setInterval(() => this.cleanup(), 60000); // Clean up every minute
+  }
+
+  /**
+   * Set current user context for cache isolation
+   */
+  setUserContext(userId: string | null): void {
+    if (this.currentUserId !== userId) {
+      // User changed - clear existing cache
+      this.cache.clear();
+      this.currentUserId = userId;
+      
+      // Load cache for new user if available
+      if (userId && this.config.enablePersistence && typeof window !== 'undefined') {
+        this.loadFromStorage();
+      }
+    }
   }
 
   /**
@@ -104,9 +117,13 @@ class CacheManager {
    */
   clear(): void {
     this.cache.clear();
+    this.currentUserId = null;
     
     if (this.config.enablePersistence && typeof window !== 'undefined') {
       localStorage.removeItem('hr-portal-cache');
+      // Also clear session storage items
+      sessionStorage.removeItem('cachedPages');
+      sessionStorage.removeItem('cachedPagesTime');
     }
   }
 
@@ -157,7 +174,7 @@ class CacheManager {
   }
 
   /**
-   * Save cache to localStorage
+   * Save cache to localStorage with user isolation
    */
   private saveToStorage(): void {
     try {
@@ -172,7 +189,7 @@ class CacheManager {
   }
 
   /**
-   * Load cache from localStorage
+   * Load cache from localStorage with user validation
    */
   private loadFromStorage(): void {
     try {
@@ -184,9 +201,12 @@ class CacheManager {
         // Only load if cache is not too old (24 hours)
         if (now - parsed.timestamp < 24 * 60 * 60 * 1000) {
           for (const [key, item] of parsed.items) {
-            // Check if item is still valid
-            if (now - item.timestamp <= item.ttl) {
-              this.cache.set(key, item);
+            // Only load cache items that belong to the current user
+            if (this.currentUserId && key.startsWith(`user:${this.currentUserId}:`)) {
+              // Check if item is still valid
+              if (now - item.timestamp <= item.ttl) {
+                this.cache.set(key, item);
+              }
             }
           }
         }
@@ -200,68 +220,78 @@ class CacheManager {
 // Create singleton instance
 const cacheManager = new CacheManager();
 
-// Cache keys for different data types
+// Cache keys for different data types with user isolation
 export const CACHE_KEYS = {
-  // Pages
-  PAGES: 'pages',
-  PAGE_DETAILS: (pageId: string) => `page:${pageId}`,
+  // Pages - user-specific
+  PAGES: (userId: string) => `user:${userId}:pages`,
+  PAGE_DETAILS: (userId: string, pageId: string) => `user:${userId}:page:${pageId}`,
   
-  // Events
-  EVENTS: (pageId: string) => `events:${pageId}`,
-  EVENT_DETAILS: (eventId: string) => `event:${eventId}`,
-  EVENT_APPLICANTS: (eventId: string) => `event-applicants:${eventId}`,
+  // Events - user-specific
+  EVENTS: (userId: string, pageId: string) => `user:${userId}:events:${pageId}`,
+  EVENT_DETAILS: (userId: string, eventId: string) => `user:${userId}:event:${eventId}`,
+  EVENT_APPLICANTS: (userId: string, eventId: string) => `user:${userId}:event-applicants:${eventId}`,
   
-  // Opportunities
-  OPPORTUNITIES: (pageId: string) => `opportunities:${pageId}`,
-  OPPORTUNITY_DETAILS: (opportunityId: string) => `opportunity:${opportunityId}`,
-  OPPORTUNITY_APPLICANTS: (opportunityId: string) => `opportunity-applicants:${opportunityId}`,
+  // Opportunities - user-specific
+  OPPORTUNITIES: (userId: string, pageId: string) => `user:${userId}:opportunities:${pageId}`,
+  OPPORTUNITY_DETAILS: (userId: string, opportunityId: string) => `user:${userId}:opportunity:${opportunityId}`,
+  OPPORTUNITY_APPLICANTS: (userId: string, opportunityId: string) => `user:${userId}:opportunity-applicants:${opportunityId}`,
   
-  // Applicants
-  APPLICANTS: 'applicants',
-  APPLICANT_DETAILS: (applicantId: string) => `applicant:${applicantId}`,
+  // Applicants - user-specific
+  APPLICANTS: (userId: string) => `user:${userId}:applicants`,
+  APPLICANT_DETAILS: (userId: string, applicantId: string) => `user:${userId}:applicant:${applicantId}`,
   
   // User data
-  USER_PROFILE: (userId: string) => `user:${userId}`,
-  USER_PAGES: (userId: string) => `user-pages:${userId}`,
+  USER_PROFILE: (userId: string) => `user:${userId}:profile`,
+  USER_PAGES: (userId: string) => `user:${userId}:user-pages`,
   
-  // Payment gateway
-  PAYMENT_CONFIG: (eventId: string) => `payment-config:${eventId}`,
+  // Payment gateway - user-specific
+  PAYMENT_CONFIG: (userId: string, eventId: string) => `user:${userId}:payment-config:${eventId}`,
 } as const;
 
-// Cache invalidation helpers
+// Cache invalidation helpers with user isolation
 export const invalidateCache = {
-  // Invalidate all page-related cache
-  pages: () => {
-    cacheManager.invalidatePattern('page:');
-    cacheManager.invalidatePattern('events:');
-    cacheManager.invalidatePattern('opportunities:');
+  // Invalidate all cache for a specific user
+  userAll: (userId: string) => {
+    cacheManager.invalidatePattern(`user:${userId}:`);
   },
   
-  // Invalidate specific event cache
-  event: (eventId: string) => {
-    cacheManager.delete(CACHE_KEYS.EVENT_DETAILS(eventId));
-    cacheManager.delete(CACHE_KEYS.EVENT_APPLICANTS(eventId));
-    cacheManager.delete(CACHE_KEYS.PAYMENT_CONFIG(eventId));
+  // Invalidate all page-related cache for a user
+  pages: (userId: string) => {
+    cacheManager.invalidatePattern(`user:${userId}:page:`);
+    cacheManager.invalidatePattern(`user:${userId}:events:`);
+    cacheManager.invalidatePattern(`user:${userId}:opportunities:`);
   },
   
-  // Invalidate specific opportunity cache
-  opportunity: (opportunityId: string) => {
-    cacheManager.delete(CACHE_KEYS.OPPORTUNITY_DETAILS(opportunityId));
-    cacheManager.delete(CACHE_KEYS.OPPORTUNITY_APPLICANTS(opportunityId));
+  // Invalidate specific event cache for a user
+  event: (userId: string, eventId: string) => {
+    cacheManager.delete(CACHE_KEYS.EVENT_DETAILS(userId, eventId));
+    cacheManager.delete(CACHE_KEYS.EVENT_APPLICANTS(userId, eventId));
+    cacheManager.delete(CACHE_KEYS.PAYMENT_CONFIG(userId, eventId));
   },
   
-  // Invalidate all applicant cache
-  applicants: () => {
-    cacheManager.invalidatePattern('applicant:');
-    cacheManager.invalidatePattern('event-applicants:');
-    cacheManager.invalidatePattern('opportunity-applicants:');
+  // Invalidate specific opportunity cache for a user
+  opportunity: (userId: string, opportunityId: string) => {
+    cacheManager.delete(CACHE_KEYS.OPPORTUNITY_DETAILS(userId, opportunityId));
+    cacheManager.delete(CACHE_KEYS.OPPORTUNITY_APPLICANTS(userId, opportunityId));
+  },
+  
+  // Invalidate all applicant cache for a user
+  applicants: (userId: string) => {
+    cacheManager.invalidatePattern(`user:${userId}:applicant:`);
+    cacheManager.invalidatePattern(`user:${userId}:event-applicants:`);
+    cacheManager.invalidatePattern(`user:${userId}:opportunity-applicants:`);
   },
   
   // Invalidate user-related cache
   user: (userId: string) => {
     cacheManager.delete(CACHE_KEYS.USER_PROFILE(userId));
     cacheManager.delete(CACHE_KEYS.USER_PAGES(userId));
+  },
+  
+  // Clear all cache (for logout)
+  all: () => {
+    cacheManager.clear();
   }
 };
 
-export default cacheManager; 
+export default cacheManager;

@@ -7,7 +7,7 @@ import { Share2, SlidersHorizontal, Pencil } from "lucide-react";
 import { useParams } from "next/navigation";
 import { AssignTaskModal } from "./AssignTaskModal";
 import { ScheduleInterviewModal } from "./ScheduleInterviewModal";
-import EditOpportunityModal from "../../../../components/EditOpportunityModal";
+import EditOpportunityModal from "@/components/opportunity/EditOpportunityModal";
 import { format } from "date-fns";
 import {
   ApplicantProfile,

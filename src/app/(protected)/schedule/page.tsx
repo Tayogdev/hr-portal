@@ -1,6 +1,6 @@
 'use client';
 
-import SchedulePage from '../pages/schedulemodule/SchedulePage';
+import SchedulePage from './Result';
 
 export default function Page() {
   return <SchedulePage />;

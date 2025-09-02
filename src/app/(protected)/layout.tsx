@@ -1,24 +1,27 @@
-import CustomNavbar from './sidebar/CustomNavbar';
-import Header from './header/Header';
-import { LoadingProvider } from '../../components/LoadingProvider';
-import { PageProvider } from '../../components/PageContext';
+import CustomSidebar from '@/components/CustomSidebar';
+import Header from '@/components/Header';
+import { LoadingProvider } from '@/components/LoadingProvider';
+import { PageProvider } from '@/components/PageContext';
+import { getSessionAndViewAs } from '@/app/api/auth/getSession';
 
-export default function ProtectedGroupLayout({
+export default async function ProtectedGroupLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { viewAs } = await getSessionAndViewAs();
+
   return (
     <LoadingProvider>
       <PageProvider>
         <div className="flex h-screen overflow-hidden bg-gray-50">
           {/* Fixed Sidebar */}
-          <CustomNavbar />
+          <CustomSidebar />
 
           {/* Main content area with proper margin for fixed sidebar */}
           <div className="flex-1 flex flex-col ml-0 md:ml-64 overflow-hidden">
             {/* Fixed Header */}
-            <Header />
+            <Header currentView={viewAs} />
             
             {/* Scrollable main content */}
             <main className="flex-1 overflow-y-auto bg-[#F8FAFC] p-4 md:p-6">

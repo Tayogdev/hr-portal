@@ -157,7 +157,7 @@ class SessionManager {
    * Clear all session-related data
    */
   private clearSessionData() {
-    // Clear cache
+    // Clear all cache including user-specific cache
     cacheManager.clear();
     
     // Clear localStorage
@@ -165,6 +165,9 @@ class SessionManager {
       localStorage.removeItem('selectedPageId');
       localStorage.removeItem('cachedPages');
       localStorage.removeItem('cachedPagesTime');
+      
+      // Clear all session storage
+      sessionStorage.clear();
       
       // Notify other tabs
       localStorage.setItem('session-expired', Date.now().toString());
@@ -214,7 +217,7 @@ class SessionManager {
    */
   async refreshSession(): Promise<void> {
     try {
-      await getSession({ force: true });
+      await getSession();
     } catch (error) {
       logger.error('Failed to refresh session', error as Error, 'SessionManager');
       this.handleSessionExpired();

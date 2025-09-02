@@ -5,7 +5,6 @@ import pool from '@/dbconfig/dbconfig';
 
 export async function GET() {
   try {
-    // 🧠 Get logged-in user's session
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user?.id) {
@@ -34,7 +33,7 @@ export async function GET() {
     });
 
     // Add caching headers for better performance
-    response.headers.set('Cache-Control', 'private, max-age=300'); // Cache for 5 minutes
+    // response.headers.set('Cache-Control', 'private, max-age=300'); // Cache for 5 minutes
     return response;
   } catch (error) {
     return NextResponse.json(

@@ -61,20 +61,20 @@ export default function ApplicantCard({
         <div className="mt-1 flex flex-wrap gap-1">
           <span
             className={`inline-block px-2 py-1 text-xs rounded-full ${
-              applicant.status === "SHORTLISTED"
+              applicant.status === "SHORTLISTING"
                 ? "bg-purple-100 text-purple-700"
                 : applicant.status === "REJECTED"
                   ? "bg-red-100 text-red-700"
                   : "bg-gray-100 text-gray-600"
             }`}
           >
-            {applicant.status === "SHORTLISTED"
+            {applicant.status === "SHORTLISTING"
               ? "Approved"
               : applicant.status === "REJECTED"
                 ? "Rejected"
                 : applicant.status}
           </span>
-          {applicant.status === "SHORTLISTED" && applicant.bookingStatus && (
+          {applicant.status === "SHORTLISTING" && applicant.bookingStatus && (
             <span
               className={`inline-block px-2 py-1 text-xs rounded-full ${
                 applicant.bookingStatus === "SUCCESS"

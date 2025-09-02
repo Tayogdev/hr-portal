@@ -525,7 +525,7 @@ export default function EventPage() {
         filtered = applicants.filter((app) => app.bookingStatus === "SUCCESS");
         break;
       case "approved":
-        filtered = applicants.filter((app) => app.status === "SHORTLISTED");
+        filtered = applicants.filter((app) => app.status === "SHORTLISTING");
         // Apply approved sub-tab filtering
         switch (approvedSubTab) {
           case "paid":
@@ -586,13 +586,13 @@ export default function EventPage() {
       applicants.filter((app) => app.bookingStatus === "SUCCESS").length
     );
     setApprovedApplicants(
-      applicants.filter((app) => app.status === "SHORTLISTED").length
+      applicants.filter((app) => app.status === "SHORTLISTING").length
     );
   }, [applicants]);
 
   // Calculate approved sub-tab counts
   const shortlistedApplicants = applicants.filter(
-    (app) => app.status === "SHORTLISTED"
+    (app) => app.status === "SHORTLISTING"
   );
   const holdApplicants = applicants.filter((app) => app.status === "HOLD");
   const approvedPaidCount = shortlistedApplicants.filter(
@@ -697,7 +697,7 @@ export default function EventPage() {
             applicant.id.toString() === applicantId
               ? {
                   ...applicant,
-                  status: "SHORTLISTED" as const,
+                  status: "SHORTLISTING" as const,
                   bookingStatus: "SHORTLISTING",
                 }
               : applicant
@@ -710,7 +710,7 @@ export default function EventPage() {
             prev
               ? {
                   ...prev,
-                  status: "SHORTLISTED" as const,
+                  status: "SHORTLISTING" as const,
                   bookingStatus: "SHORTLISTING",
                 }
               : null
@@ -740,7 +740,7 @@ export default function EventPage() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ bookingStatus: "PENDING" }),
+          body: JSON.stringify({ bookingStatus: "SHORTLISTING" }),
         }
       );
 
@@ -751,14 +751,14 @@ export default function EventPage() {
         setApplicants((prev) =>
           prev.map((applicant) =>
             applicant.id === selectedApplicant.id
-              ? { ...applicant, bookingStatus: "PENDING" }
+              ? { ...applicant, bookingStatus: "SHORTLISTING" }
               : applicant
           )
         );
 
         // Update selected applicant
         setSelectedApplicant((prev) =>
-          prev ? { ...prev, bookingStatus: "PENDING" } : null
+          prev ? { ...prev, bookingStatus: "SHORTLISTING" } : null
         );
 
         setIsPaymentInitiationModalOpen(false);

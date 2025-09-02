@@ -21,12 +21,31 @@ export async function PUT(
     const { eventId, applicantId } = await params;
     const { status } = await request.json();
     
-
-
-    if (!status || !['APPROVED', 'DECLINED', 'REJECTED', 'HOLD'].includes(status)) {
+    // Validate input parameters
+    if (!eventId || !applicantId) {
       return NextResponse.json(
-        { success: false, message: 'Invalid status. Must be APPROVED, DECLINED, REJECTED, or HOLD' },
+        { success: false, message: 'Event ID and Applicant ID are required' },
         { status: 400 }
+      );
+    }
+
+    if (!status || !['APPROVED', 'REJECTED', 'HOLD'].includes(status)) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid status. Must be APPROVED, REJECTED, or HOLD' },
+        { status: 400 }
+      );
+    }
+
+    // Verify applicant exists for this event
+    const applicantExistsQuery = `
+      SELECT id FROM "registeredEvent" WHERE "eventId" = $1 AND "id" = $2
+    `;
+    const applicantExistsResult = await pool.query(applicantExistsQuery, [eventId, applicantId]);
+    
+    if (applicantExistsResult.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'Applicant not found for this event' },
+        { status: 404 }
       );
     }
 
@@ -119,7 +138,7 @@ export async function PUT(
 
           if (status === 'APPROVED') {
             emailSent = await EmailNotifications.sendShortlistedEmail(emailData);
-          } else if (status === 'REJECTED' || status === 'DECLINED') {
+          } else if (status === 'REJECTED') {
             emailSent = await EmailNotifications.sendRejectedEmail(emailData);
           }
           // No email sent for HOLD status

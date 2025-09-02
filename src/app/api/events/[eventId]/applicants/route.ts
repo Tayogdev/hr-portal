@@ -39,7 +39,7 @@ interface FormattedRegisteredUser {
   title?: string;
   tags?: string[];
   appliedDate: string;
-  status: 'PENDING' | 'SHORTLISTED' | 'MAYBE' | 'REJECTED' | 'FINAL';
+  status: 'PENDING' | 'SHORTLISTING' | 'REJECTED' | 'HOLD' | 'FINAL';
   score?: number;
   // Additional registration details
   profession?: string;
@@ -149,12 +149,12 @@ export async function GET(
         }),
         status: (() => {
           // Map bookingStatus to status for UI consistency
-          if (user.bookingStatus === 'SHORTLISTING') return 'SHORTLISTED' as const;
+          if (user.bookingStatus === 'SHORTLISTING') return 'SHORTLISTING' as const;
           if (user.bookingStatus === 'HOLD') return 'HOLD' as const;
           if (user.bookingStatus === 'REJECTED') return 'REJECTED' as const;
           if (user.bookingStatus === 'SUCCESS') return 'FINAL' as const;
           if (user.bookingStatus === 'PENDING') return 'PENDING' as const;
-          return user.status || 'PENDING' as const;
+          return 'PENDING' as const;
         })(),
         score: Math.min(score, 10), // Cap at 10
         profession: user.profession || undefined,

@@ -7,7 +7,7 @@ export interface ApplicantProfile {
   tags: string[];
   appliedDate: string;
   score: number;
-  status: "SHORTLISTED" | "FINAL" | "REJECTED" | "PENDING" | "HOLD";
+  status: "PENDING" | "SHORTLISTING" | "REJECTED" | "HOLD" | "FINAL";
   assignedTask?: {
     id: string;
     title: string;

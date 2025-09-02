@@ -114,7 +114,7 @@ export default function ApplicantDetailPanel({
 
               {/* Action Buttons - Right Side */}
               <div className="flex gap-3">
-                {selectedApplicant.status === "SHORTLISTED" ? (
+                {selectedApplicant.status === "SHORTLISTING" ? (
                   // Show different buttons based on payment status
                   selectedApplicant.bookingStatus === "SUCCESS" ? (
                     // Show Paid button when payment is successful

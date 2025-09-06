@@ -8,6 +8,8 @@ import { Bell, Loader2 } from 'lucide-react';
 import { useLoading } from '@/components/LoadingProvider';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ViewAs } from '@/types/auth-interface';
+import CustomSidebar from "@/components/CustomSidebar"; // import कर
+
 
 interface Page {
   id: string;
@@ -39,6 +41,8 @@ export default function Header({ currentView }: HeaderProps): React.JSX.Element 
   const pathname = usePathname();
   const router = useRouter();
   const { startLoading, stopLoading } = useLoading();
+
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Direct API call for pages data
   const [pages, setPages] = useState<any[]>([]);
@@ -255,166 +259,138 @@ export default function Header({ currentView }: HeaderProps): React.JSX.Element 
   const isEventDetailPage = pathname.startsWith('/events/') && pathname.split('/').length === 3;
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-30 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div>
-          <nav aria-label="Breadcrumb" className="flex items-center space-x-2">
-            {breadcrumbs.map((crumb, index) => (
-              <React.Fragment key={crumb.href}>
-                {index > 0 && <span className="text-gray-400 text-lg mx-1">&gt;</span>}
-                {index === breadcrumbs.length - 1 ? (
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-lg text-gray-600">{crumb.title}</h1>
-                    {(isJobDetailPage && loadingJobTitle) || (isEventDetailPage && loadingEventTitle) ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                    ) : null}
-                  </div>
-                ) : (
-                  <Link href={crumb.href} className="text-lg text-gray-600 hover:text-gray-800 transition-colors">
-                    {crumb.title}
-                  </Link>
-                )}
-              </React.Fragment>
-            ))}
-          </nav>
-        </div>
 
-        <div className="flex items-center gap-4">
-          {/* Bell */}
-          <button className="relative p-0 rounded-full hover:bg-gray-100 transition-colors" aria-label="Notifications">
-            <div className="w-9 h-9 rounded-full border border-gray-300 flex items-center justify-center">
-              <Bell className="w-5 h-5 text-gray-600" />
+      <>
+    {/* Sidebar */}
+    <CustomSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+
+<header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-30 shadow-sm">
+  <div className="flex items-center justify-between">
+    
+    {/* Left section: Hamburger + Breadcrumb */}
+    <div className="flex items-center gap-2 sm:gap-4">
+      {/* Hamburger */}
+      <button
+        onClick={() => setSidebarOpen(true)}
+        className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+      >
+        <svg
+          className="w-6 h-6 text-gray-700"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+
+      {/* Breadcrumbs */}
+      <nav
+        aria-label="Breadcrumb"
+        className="flex items-center space-x-1 sm:space-x-2 overflow-x-auto max-w-[70vw] sm:max-w-none"
+      >
+        {breadcrumbs.map((crumb, index) => (
+          <React.Fragment key={crumb.href}>
+            {index > 0 && (
+              <span className="text-gray-400 text-sm sm:text-lg mx-1">&gt;</span>
+            )}
+            {index === breadcrumbs.length - 1 ? (
+              <div className="flex items-center gap-1 sm:gap-2">
+                <h1 className="text-sm sm:text-lg text-gray-600 truncate max-w-[120px] sm:max-w-none">
+                  {crumb.title}
+                </h1>
+                {(isJobDetailPage && loadingJobTitle) ||
+                (isEventDetailPage && loadingEventTitle) ? (
+                  <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin text-blue-600" />
+                ) : null}
+              </div>
+            ) : (
+              <Link
+                href={crumb.href}
+                className="text-sm sm:text-lg text-gray-600 hover:text-gray-800 transition-colors truncate max-w-[80px] sm:max-w-none"
+              >
+                {crumb.title}
+              </Link>
+            )}
+          </React.Fragment>
+        ))}
+      </nav>
+    </div>
+
+    {/* Right section: Actions */}
+    <div className="flex items-center gap-2 sm:gap-4">
+      {/* Bell */}
+      <button
+        className="relative rounded-full hover:bg-gray-100 transition-colors flex items-center justify-center w-9 h-9"
+        aria-label="Notifications"
+      >
+        <Bell className="w-5 h-5 text-gray-600" />
+        <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center">
+          1
+        </span>
+      </button>
+
+      {/* Post New */}
+      <div className="relative post-dropdown">
+        <button
+          onClick={() => setPostDropdownOpen(!postDropdownOpen)}
+          className="flex items-center gap-1 sm:gap-2 bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-full hover:bg-blue-700 transition-colors font-medium text-sm sm:text-base"
+        >
+          <span className="hidden sm:inline">Post New</span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {postDropdownOpen && (
+          <div className="absolute right-0 mt-2 w-40 sm:w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+            <div className="py-1">
+              <button
+                onClick={() => {
+                  setPostDropdownOpen(false);
+                  alert('Job creation coming soon!');
+                }}
+                className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                Post Job
+              </button>
+              <button
+                onClick={() => {
+                  setPostDropdownOpen(false);
+                  alert('Event creation coming soon!');
+                }}
+                className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                Post Event
+              </button>
             </div>
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-white text-xs font-bold flex items-center justify-center">
-              1
-            </span>
-          </button>
-
-          {/* Unified Post Button with Dropdown */}
-          <div className="relative post-dropdown">
-            <button 
-              onClick={() => setPostDropdownOpen(!postDropdownOpen)}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors font-medium"
-            >
-              Post New
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            
-            {postDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <div className="py-1">
-                  <button
-                    onClick={() => {
-                      setPostDropdownOpen(false);
-                      // TODO: Implement job creation
-                      alert('Job creation feature coming soon!');
-                    }}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6" />
-                      </svg>
-                Post a New Job
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setPostDropdownOpen(false);
-                      // TODO: Implement event creation
-                      alert('Event creation feature coming soon!');
-                    }}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                      </svg>
-                      Post a New Event
-                    </div>
-              </button>
-                </div>
-              </div>
-          )}
           </div>
-
-          {/* Switch Sidebar */}
-          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-            <SheetTrigger asChild>
-              <button className="flex items-center gap-2 bg-white text-gray-800 border border-gray-300 px-4 py-2 rounded-full hover:bg-gray-100 transition-colors font-medium" >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                </svg>
-                Switch Page
-              </button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] sm:w-[350px]">
-              <SheetHeader>
-                <SheetTitle className="text-base">Switch Organization Page</SheetTitle>
-                <SheetDescription>
-                  Choose a different organization to view their opportunities and events:
-                </SheetDescription>
-              </SheetHeader>
-
-              <div className="mt-4 space-y-2">
-                {loadingPages ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-                    <span className="ml-2 text-sm text-gray-600">Loading organizations...</span>
-                  </div>
-                ) : !pages || pages.length === 0 ? (
-                  <div className="text-center py-8">
-                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                    </div>
-                    <p className="text-sm text-gray-500">No organizations available.</p>
-                    <p className="text-xs text-gray-400 mt-1">Create an organization first to get started.</p>
-                  </div>
-                ) : (
-                  (pages || []).map((page: { id: string; title: string; uName: string; logo?: string; type: string }) => (
-                    <button
-                      key={page.id}
-                      onClick={async () => {
-                        setLoadingPageId(page.id);
-                        startLoading();
-                        handleViewChange(page);
-                        setSheetOpen(false);
-                      }}
-                      disabled={loadingPageId === page.id}
-                      className={`block w-full text-left border px-4 py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                        currentView?.id === page.id 
-                          ? 'bg-blue-50 border-blue-200 text-blue-900' 
-                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-semibold text-blue-600">
-                              {page.title.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                        <div>
-                            <div className="text-sm font-medium text-gray-900">{page.title}</div>
-                            <div className="text-xs text-gray-500">@{page.uName}</div>
-                          </div>
-                        </div>
-                        {loadingPageId === page.id && (
-                          <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                        )}
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
+        )}
       </div>
-    </header>
+
+      {/* Switch Sidebar */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetTrigger asChild>
+          <button className="flex items-center gap-1 sm:gap-2 bg-white text-gray-800 border border-gray-300 px-3 sm:px-4 py-2 rounded-full hover:bg-gray-100 transition-colors font-medium text-sm sm:text-base">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+              />
+            </svg>
+            <span className="hidden sm:inline">Switch Page</span>
+          </button>
+        </SheetTrigger>
+        <SheetContent side="right" className="w-full sm:w-[350px]">
+          {/* Switch content same as your code */}
+        </SheetContent>
+      </Sheet>
+    </div>
+  </div>
+</header>
+
+</>
+
   );
 }

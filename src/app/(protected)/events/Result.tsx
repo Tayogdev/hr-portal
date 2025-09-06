@@ -17,7 +17,12 @@ export default function Events(): React.JSX.Element {
   const { currentPageName } = usePageName(pageId);
   const { eventList, loading, error, refetch } = useEvents(pageId);
 
-  // Handle loading state
+  // Case 1: No page selected
+  if (!pageId) {
+    return <EmptyState type="no-page" />;
+  }
+
+  // Case 2: Loading state
   if (loading) {
     return (
       <LoadingState
@@ -27,18 +32,13 @@ export default function Events(): React.JSX.Element {
     );
   }
 
-  // Handle error state
+  // Case 3: Error state
   if (error) {
     return <ErrorState error={error} onRetry={refetch} />;
   }
 
-  // Handle no page selected
-  if (!pageId) {
-    return <EmptyState type="no-page" />;
-  }
-
-  // Handle no events found
-  if (eventList.length === 0) {
+  // Case 4: No events found
+  if (!eventList || eventList.length === 0) {
     return (
       <EmptyState
         type="no-events"
@@ -49,14 +49,16 @@ export default function Events(): React.JSX.Element {
     );
   }
 
-  // Main events display
+  // Case 5: Show events
   return (
-    <div className="p-4 sm:p-6 md:p-8 bg-[#F8F9FC] min-h-screen">
-      <EventsHeader
-        currentPageName={currentPageName}
-        userEmail={session?.user?.email}
-      />
-      <EventsTable events={eventList} />
+    <div className="w-full min-h-screen bg-[#F8F9FC] p-4 sm:p-6 md:p-8">
+      <div className="max-w-7xl mx-auto flex flex-col gap-6">
+        <EventsHeader
+          currentPageName={currentPageName}
+          userEmail={session?.user?.email}
+        />
+        <EventsTable events={eventList} />
+      </div>
     </div>
   );
 }

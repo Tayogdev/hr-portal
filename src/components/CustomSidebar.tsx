@@ -29,10 +29,17 @@ type NavItem = {
   icon: React.JSX.Element;
 };
 
-export default function CustomSidebar(): React.JSX.Element {
+type CustomSidebarProps = {
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
+};
+
+export default function CustomSidebar({
+  sidebarOpen,
+  setSidebarOpen,
+}: CustomSidebarProps): React.JSX.Element {
   const pathname = usePathname();
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const { data: session } = useSession();
   const { isLoading } = useLoading();
@@ -123,19 +130,19 @@ export default function CustomSidebar(): React.JSX.Element {
         `}
       >
         {/* Logo Section - Fixed */}
-        <div className="flex items-center justify-center px-4 py-6 border-gray-100">
-          <Image
-            src="https://www.tayog.in/assets/logo/full_blue.svg"
-            alt="tayog logo"
-            width={124}
-            height={32}
-            className="h-8 w-auto"
-            onError={(e) => {
-              // Fallback to text if logo fails to load
-              e.currentTarget.style.display = 'none';
-              e.currentTarget.nextElementSibling?.classList.remove('hidden');
-            }}
-          />
+        <div className="flex items-center w-[99.06585693359375px] justify-center py-6 ml-6 border-gray-100">
+      <Image
+  src="https://www.tayog.in/assets/logo/full_blue.svg"
+  alt="tayog logo"
+  width={100}   // जवळपासचा int value द्यावा लागतो
+  height={32}
+  className="h-[32px] w-[99.07px] object-contain"
+  onError={(e) => {
+    // Fallback to text if logo fails to load
+    e.currentTarget.style.display = "none";
+    e.currentTarget.nextElementSibling?.classList.remove("hidden");
+  }}
+/>
           <span className="hidden text-2xl font-bold text-blue-600">tayog</span>
         </div>
 

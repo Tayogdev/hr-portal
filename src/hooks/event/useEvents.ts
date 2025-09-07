@@ -28,7 +28,6 @@ export function useEvents(pageId: string | null): UseEventsReturn {
       try {
         isFetchingRef.current = true;
         setLoading(true);
-        startLoading("Loading events...");
         setError(null);
 
         const apiUrl = new URL("/api/events", window.location.origin);

@@ -54,7 +54,6 @@ export default function JobListingPage() {
     
     try {
       setLoading(true);
-      startLoading('Loading job opportunities...');
       setError(null);
 
       const apiUrl = new URL('/api/opportunities', window.location.origin);

@@ -25,7 +25,6 @@ export function LoadingState({
       <div className="mb-4">
         <div className="flex items-center gap-2 text-blue-600">
           <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-sm">Loading events...</span>
         </div>
       </div>
 

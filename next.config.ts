@@ -1,5 +1,6 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
@@ -37,7 +38,7 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   // Webpack configuration to handle Node.js modules
-  webpack: (config, { isServer, dev }) => {
+  webpack: (config, { isServer, dev }: { isServer: boolean; dev: boolean }) => {
     if (!isServer) {
       // Don't attempt to load Node.js modules on the client side
       config.resolve.fallback = {

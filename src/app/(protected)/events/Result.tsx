@@ -52,7 +52,7 @@ export default function Events(): React.JSX.Element {
   // Case 5: Show events
   return (
     <div className="w-full min-h-screen p-4 sm:p-6 md:p-8">
-      <div className="max-w-7xl mx-auto flex flex-col gap-6">
+      <div className="max-w-7xl mx-auto flex flex-col ">
         <EventsHeader
           currentPageName={currentPageName}
           userEmail={session?.user?.email}

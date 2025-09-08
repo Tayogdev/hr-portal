@@ -38,10 +38,10 @@ export default function NewSidebar({
 }: NewSidebarProps): React.JSX.Element {
   const pathname = usePathname();
   const router = useRouter();
-  const [clickedItem, setClickedItem] = useState<string | null>(null);
   const { data: session } = useSession();
   const { isLoading } = useLoading();
   const { selectedPageId, clearSelectedPage } = usePageContext();
+  const [profileExpanded, setProfileExpanded] = useState(false);
 
   const navItems: NavItem[] = [
     {
@@ -77,22 +77,14 @@ export default function NewSidebar({
   ];
 
   const handleNavigation = (href: string, name: string) => {
-    setClickedItem(name);
-    
     // Add pageId to URL if available for job listing and events
     let finalHref = href;
     if ((href === '/job-listing' || href === '/events') && selectedPageId) {
       finalHref = `${href}?pageId=${selectedPageId}`;
     }
     
-    // Navigate immediately for better UX
+    // Navigate immediately
     router.push(finalHref);
-    
-    // Keep loading state for visual feedback, but don't close sidebar
-    setTimeout(() => {
-      setClickedItem(null);
-      // Sidebar stays open for better UX
-    }, 500);
   };
 
   const handleLogout = () => {
@@ -106,9 +98,8 @@ export default function NewSidebar({
       {/* Left Sidebar */}
       <aside
         className={`
-          w-64 bg-white border-r border-gray-200 h-[calc(100vh-4rem)] 
-          transform transition-transform duration-300 ease-in-out flex-shrink-0
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          ${sidebarOpen ? 'w-64' : 'w-16'} bg-white border-r border-gray-200 h-[calc(100vh-4rem)] 
+          transition-all duration-300 ease-in-out flex-shrink-0
           flex flex-col shadow-lg fixed top-16 left-0 z-20
           lg:z-10
         `}
@@ -117,39 +108,31 @@ export default function NewSidebar({
           
           
           {/* Main Navigation */}
-          <div className="flex-1 pt-6 px-4 pb-4 overflow-y-auto">
+          <div className="flex-1 pt-6 px-2 pb-4 overflow-y-auto">
             <div className="space-y-2">
               {navItems.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-                const isClicked = clickedItem === item.name;
-                const showLoading = isClicked || (isLoading && isActive);
                 
                 return (
                   <button
                     key={item.name}
                     onClick={() => handleNavigation(item.href, item.name)}
-                    disabled={showLoading}
                     className={`
-                      w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg
-                      transition-all duration-200 group
+                      w-full flex items-center ${sidebarOpen ? 'gap-3 px-3' : 'justify-center px-2'} py-2.5 text-sm font-medium rounded-lg
+                      transition-all duration-200 group relative
                       ${
                         isActive
                           ? 'bg-blue-50 text-blue-700'
                           : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                       }
-                      ${showLoading ? 'cursor-not-allowed opacity-75' : ''}
                     `}
+                    title={!sidebarOpen ? item.name : undefined}
                   >
                     <span className={`${isActive ? 'text-blue-700' : 'text-gray-500 group-hover:text-gray-700'}`}>
-                      {showLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        item.icon
-                      )}
+                      {item.icon}
                     </span>
-                    <span className="flex-1 text-left">{item.name}</span>
-                    {showLoading && (
-                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                    {sidebarOpen && (
+                      <span className="flex-1 text-left">{item.name}</span>
                     )}
                   </button>
                 );
@@ -158,45 +141,110 @@ export default function NewSidebar({
           </div>
 
           {/* Bottom Section - User Actions */}
-          <div className="border-t border-gray-100 p-4 space-y-2">
-            {/* Settings */}
-            <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors">
-              <Settings className="w-4 h-4" />
-              Settings
-            </button>
+          <div className={`border-t border-gray-100 ${sidebarOpen ? 'p-4' : 'p-2'} space-y-2`}>
+            {sidebarOpen ? (
+              <>
+                {/* Settings */}
+                <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors">
+                  <Settings className="w-4 h-4" />
+                  Settings
+                </button>
 
-            {/* Help Desk */}
-            <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors">
-              <HelpCircle className="w-4 h-4" />
-              Help desk
-            </button>
+                {/* Help Desk */}
+                <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors">
+                  <HelpCircle className="w-4 h-4" />
+                  Help desk
+                </button>
 
-            {/* Logout */}
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </button>
-
-            {/* User Profile */}
-            {session?.user && (
-              <div className="flex items-center gap-3 p-3 mt-4 bg-gray-50 rounded-lg">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-semibold text-blue-700">
-                    {session.user.name?.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate">
-                    {session?.user?.name || 'User'}
+                {/* User Profile */}
+                {session?.user && (
+                  <div className="mt-4">
+                    <button
+                      onClick={() => setProfileExpanded(!profileExpanded)}
+                      className="w-full flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-semibold text-blue-700">
+                          {session.user.name?.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0 text-left">
+                        <div className="text-sm font-medium text-gray-900 truncate">
+                          {session?.user?.name || 'User'}
+                        </div>
+                        <div className="text-xs text-gray-500 truncate">
+                          {session.user.email}
+                        </div>
+                      </div>
+                      <svg 
+                        className={`w-4 h-4 text-gray-400 transition-transform ${profileExpanded ? 'rotate-180' : ''}`} 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    
+                    {/* Logout - only visible when profile is expanded */}
+                    {profileExpanded && (
+                      <div className="mt-2 pl-4">
+                        <button
+                          onClick={handleLogout}
+                          className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Logout
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <div className="text-xs text-gray-500 truncate">
-                    {session.user.email}
-                  </div>
-                </div>
-              </div>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Collapsed Settings */}
+                <button 
+                  className="w-full flex items-center justify-center py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors"
+                  title="Settings"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+
+                {/* Collapsed Help Desk */}
+                <button 
+                  className="w-full flex items-center justify-center py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors"
+                  title="Help desk"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                </button>
+
+                {/* Collapsed User Profile */}
+                {session?.user && (
+                  <button
+                    onClick={() => setProfileExpanded(!profileExpanded)}
+                    className="w-full flex items-center justify-center p-2 mt-4 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                    title="Profile"
+                  >
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-sm font-semibold text-blue-700">
+                        {session.user.name?.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  </button>
+                )}
+
+                {/* Collapsed Logout - only visible when profile is expanded */}
+                {profileExpanded && (
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center justify-center py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors"
+                    title="Logout"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>

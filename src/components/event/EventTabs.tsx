@@ -20,7 +20,7 @@ export default function EventTabs({
   onApprovedSubTabChange,
 }: EventTabsProps) {
   return (
-    <div className="border-b border-gray-200 mb-4 md:mb-6 overflow-x-auto">
+    <div className="mb-4 md:mb-6 overflow-x-auto">
       <div className="flex gap-4 md:gap-8 whitespace-nowrap">
         {tabs.map((tab) => (
           <button

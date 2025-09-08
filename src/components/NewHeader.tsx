@@ -82,9 +82,6 @@ export default function NewHeader({ currentView, sidebarOpen, setSidebarOpen }: 
 
   const handleViewChange = async (page: Page) => {
     try {
-      setLoadingPageId(page.id);
-      startLoading();
-      
       // Update session first to prevent page reload
       await update({
         ...session,
@@ -102,15 +99,8 @@ export default function NewHeader({ currentView, sidebarOpen, setSidebarOpen }: 
       newUrl.searchParams.set('pageId', page.id);
       window.history.pushState({}, '', newUrl.pathname + newUrl.search);
       
-      // Small delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      setLoadingPageId(null);
-      stopLoading();
     } catch (error) {
       console.error("Error updating session:", error);
-      setLoadingPageId(null);
-      stopLoading();
     }
   };
 
@@ -253,10 +243,22 @@ export default function NewHeader({ currentView, sidebarOpen, setSidebarOpen }: 
       const isJobDetail = segments[0] === 'job-listing' && i === 1;
       const isEventDetail = segments[0] === 'events' && i === 1;
 
-      if (isJobDetail && currentJobTitle) {
-        title = currentJobTitle;
-      } else if (isEventDetail && currentEventTitle) {
-        title = currentEventTitle;
+      if (isJobDetail) {
+        if (currentJobTitle) {
+          title = currentJobTitle;
+        } else if (loadingJobTitle) {
+          title = "Loading Job...";
+        } else {
+          title = "Job Details";
+        }
+      } else if (isEventDetail) {
+        if (currentEventTitle) {
+          title = currentEventTitle;
+        } else if (loadingEventTitle) {
+          title = "Loading Event...";
+        } else {
+          title = "Event Details";
+        }
       }
 
       breadcrumbs.push({
@@ -302,7 +304,7 @@ export default function NewHeader({ currentView, sidebarOpen, setSidebarOpen }: 
           {/* Breadcrumbs - positioned after logo */}
           <nav
             aria-label="Breadcrumb"
-            className="flex items-center ml-4 lg:ml-6 flex-1 min-w-0"
+            className="flex items-center ml-12 lg:ml-16 flex-1 min-w-0"
           >
             {breadcrumbs.map((crumb, index) => (
               <React.Fragment key={crumb.href}>
@@ -333,10 +335,10 @@ export default function NewHeader({ currentView, sidebarOpen, setSidebarOpen }: 
         </div>
 
         {/* Right section: Actions */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
           {/* Bell */}
           <button
-            className="relative rounded-full hover:bg-gray-100 transition-colors flex items-center justify-center w-9 h-9"
+            className="relative rounded-full hover:bg-gray-100 transition-colors flex items-center justify-center w-9 h-9 flex-shrink-0"
             aria-label="Notifications"
           >
             <Bell className="w-5 h-5 text-gray-600" />
@@ -346,13 +348,14 @@ export default function NewHeader({ currentView, sidebarOpen, setSidebarOpen }: 
           </button>
 
           {/* Post a new Event */}
-          <div className="relative post-dropdown">
+          <div className="relative post-dropdown flex-shrink-0">
             <button
               onClick={() => setPostDropdownOpen(!postDropdownOpen)}
-              className="flex items-center gap-1 sm:gap-2 bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-full hover:bg-blue-700 transition-colors font-medium text-sm sm:text-base"
+              className="flex items-center gap-1 bg-white border-2 border-blue-600 text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg font-medium text-xs sm:text-sm transition-colors flex-shrink-0"
             >
               <span className="hidden sm:inline">Post a new Event</span>
               <span className="sm:hidden">+</span>
+              <span className="text-lg">+</span>
             </button>
             {postDropdownOpen && (
               <div className="absolute right-0 mt-2 w-40 sm:w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
@@ -374,16 +377,22 @@ export default function NewHeader({ currentView, sidebarOpen, setSidebarOpen }: 
           {/* Switch Sidebar */}
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
-              <button className="flex items-center gap-1 sm:gap-2 bg-white text-gray-800 border border-gray-300 px-3 sm:px-4 py-2 rounded-full hover:bg-gray-100 transition-colors font-medium text-sm sm:text-base">
+              <button className="flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-4 py-2.5 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-colors font-medium text-sm flex-shrink-0">
                 <ArrowLeftRight className="w-4 h-4" />
                 <span className="hidden sm:inline">Switch Page</span>
+                <span className="sm:hidden">Switch</span>
               </button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:w-[350px]">
-              <SheetHeader>
-                <SheetTitle>Switch Page</SheetTitle>
-                <SheetDescription>
-                  Select a page to switch to
+            <SheetContent side="right" className="w-full sm:w-[320px] bg-white border-l-2 border-blue-100">
+              <SheetHeader className="border-b border-gray-100 pb-3 mb-4">
+                <SheetTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <ArrowLeftRight className="w-4 h-4 text-blue-600" />
+                  </div>
+                  Switch Page
+                </SheetTitle>
+                <SheetDescription className="text-sm text-gray-500 ml-10">
+                  Select a page to manage
                 </SheetDescription>
               </SheetHeader>
               
@@ -409,20 +418,9 @@ export default function NewHeader({ currentView, sidebarOpen, setSidebarOpen }: 
                           handleViewChange(page);
                           setSheetOpen(false);
                         }}
-                        disabled={loadingPageId === page.id}
-                        className={`
-                          w-full flex items-center gap-3 p-3 text-left rounded-lg border transition-all duration-200
-                          ${loadingPageId === page.id 
-                            ? 'border-blue-200 bg-blue-50 cursor-not-allowed' 
-                            : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                          }
-                        `}
+                        className="w-full flex items-center gap-3 p-4 text-left rounded-xl border transition-all duration-300 transform hover:scale-[1.02] border-gray-200 hover:bg-gradient-to-r hover:from-gray-50 hover:to-white hover:border-blue-200 hover:shadow-lg"
                       >
-                        {loadingPageId === page.id ? (
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                          </div>
-                        ) : page.logo ? (
+                        {page.logo ? (
                           <img
                             src={page.logo}
                             alt={page.title}
@@ -436,24 +434,13 @@ export default function NewHeader({ currentView, sidebarOpen, setSidebarOpen }: 
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <div className={`font-medium truncate ${
-                            loadingPageId === page.id ? 'text-blue-700' : 'text-gray-900'
-                          }`}>
+                          <div className="font-medium truncate text-gray-900">
                             {page.title}
                           </div>
-                          <div className={`text-sm truncate ${
-                            loadingPageId === page.id ? 'text-blue-600' : 'text-gray-500'
-                          }`}>
-                            {loadingPageId === page.id ? 'Switching...' : page.type}
+                          <div className="text-sm truncate text-gray-500">
+                            {page.type}
                           </div>
                         </div>
-                        {loadingPageId === page.id && (
-                          <div className="flex items-center gap-1 text-xs text-blue-600">
-                            <div className="w-1 h-1 bg-blue-600 rounded-full animate-pulse"></div>
-                            <div className="w-1 h-1 bg-blue-600 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-                            <div className="w-1 h-1 bg-blue-600 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
-                          </div>
-                        )}
                       </button>
                     ))}
                   </div>

@@ -46,7 +46,7 @@ export default function Layout({ children, currentView }: LayoutProps): React.JS
       <main 
         className={`
           bg-white min-h-[calc(100vh-4rem)] transition-all duration-300 ease-in-out overflow-y-auto pt-16
-          ${sidebarOpen ? 'lg:ml-64 lg:w-[calc(100%-16rem)]' : 'lg:ml-0 w-full'}
+          ${sidebarOpen ? 'lg:ml-64 lg:w-[calc(100%-16rem)]' : 'lg:ml-16 lg:w-[calc(100%-4rem)]'}
         `}
       >
         <div className="px-6 py-6">

@@ -8,72 +8,90 @@ interface EventsTableProps {
 
 const TABLE_HEADERS = [
   "Event Name",
-  "Status",
+  "Status", 
   "Event Type",
   "Posted on",
   "Due Date",
-  "Registrations",
+  "Total Registration",
   "Action",
 ];
 
 export function EventsTable({ events }: EventsTableProps): React.JSX.Element {
   return (
-    <div className="w-full rounded-xl shadow bg-white">
+    <div className="w-full">
       {/* Desktop Table */}
-      <div className="hidden sm:block w-full overflow-x-auto">
-        <div className="min-w-[900px]">
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full border-separate border-spacing-0">
           {/* Table Header */}
-          <div className="bg-[#4A5568] text-white px-6 py-4">
-            <div className="grid grid-cols-7 gap-4">
+          <thead>
+            <tr className="bg-slate-600 text-white">
               {TABLE_HEADERS.map((header) => (
-                <div
+                <th
                   key={header}
-                  className="font-medium text-sm md:text-base truncate"
+                  className="px-6 py-3 text-left text-sm font-medium whitespace-nowrap"
                 >
                   {header}
-                </div>
+                </th>
               ))}
-            </div>
-          </div>
-
-          {/* Table Rows */}
-          {events.map((event, index) => (
-            <EventRow key={event.id} event={event} index={index} />
-          ))}
-        </div>
+            </tr>
+          </thead>
+          
+          {/* Table Body */}
+          <tbody className="bg-white">
+            {events.map((event, index) => (
+              <EventRow key={event.id} event={event} index={index} />
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {/* Mobile List View */}
-      <div className="sm:hidden divide-y">
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
         {events.map((event, index) => (
-          <div key={event.id} className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <img
-                src="/job-icon.png"
-                alt="Event Logo"
-                className="w-8 h-8 object-contain"
-              />
-              <h3 className="font-medium text-base">{event.eventName}</h3>
+          <div key={event.id} className="p-4 space-y-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                <div className="w-6 h-6 bg-gray-400 rounded"></div>
+              </div>
+              <div>
+                <h3 className="font-medium text-gray-900">{event.eventName}</h3>
+                <p className="text-sm text-gray-500">{event.eventType}</p>
+              </div>
             </div>
-            <p className="text-sm text-gray-600 mb-1">
-              <span className="font-semibold">Status:</span> {event.status}
-            </p>
-            <p className="text-sm text-gray-600 mb-1">
-              <span className="font-semibold">Type:</span> {event.eventType}
-            </p>
-            <p className="text-sm text-gray-600 mb-1">
-              <span className="font-semibold">Posted:</span> {event.postedOn}
-            </p>
-            <p className="text-sm text-gray-600 mb-1">
-              <span className="font-semibold">Due:</span> {event.dueDate}
-            </p>
-            <p className="text-sm text-gray-600 mb-2">
-              <span className="font-semibold">Registrations:</span>{" "}
-              {event.totalRegistration}
-            </p>
-            {/* Action button */}
-            <div>
-              <EventRow event={event} index={index} />
+            
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="text-gray-500">Status:</span>
+                <div className="mt-1">
+                  <span
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      event.status === "Live"
+                        ? "bg-white text-gray-800 border border-gray-200"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {event.status === "Live" && <div className="w-2 h-2 bg-green-500 rounded-full mr-1.5"></div>}
+                    {event.status}
+                    {event.status === "Live" && <div className="ml-1.5 text-gray-500">▼</div>}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <span className="text-gray-500">Registrations:</span>
+                <p className="font-medium text-gray-900">{event.totalRegistration}</p>
+              </div>
+              <div>
+                <span className="text-gray-500">Posted:</span>
+                <p className="font-medium text-gray-900">{event.postedOn}</p>
+              </div>
+              <div>
+                <span className="text-gray-500">Due:</span>
+                <p className="font-medium text-gray-900">{event.dueDate}</p>
+              </div>
+            </div>
+            
+            <div className="pt-2">
+              <EventRow event={event} index={index} isMobile={true} />
             </div>
           </div>
         ))}

@@ -17,7 +17,7 @@ export function EventsHeader({
         flex flex-col sm:flex-row justify-between 
         items-start sm:items-center 
         gap-3 sm:gap-4 
-        mb-6 px-4 sm:px-6 md:px-8
+        mb-6 px-4 sm:px-6 md:px-1
       "
     >
       {/* Left Section */}

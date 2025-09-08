@@ -139,7 +139,7 @@ export default function JobListingPage() {
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 md:p-8 bg-[#F8F9FC] min-h-screen">
+      <div className="p-4 sm:p-6 md:p-8 min-h-screen">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
@@ -172,7 +172,7 @@ export default function JobListingPage() {
 
   if (error) {
     return (
-      <div className="p-8 bg-[#F8F9FC] min-h-screen flex items-center justify-center">
+      <div className="p-8 min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 mb-4">⚠️ Error Loading Jobs</div>
           <div className="text-gray-600 mb-4">{error}</div>
@@ -187,7 +187,7 @@ export default function JobListingPage() {
 
   if (jobs.length === 0 && !loading) {
     return (
-      <div className="p-8 bg-[#F8F9FC] min-h-screen flex items-center justify-center">
+      <div className="p-8 min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md">
           {!pageId ? (
             <>
@@ -222,7 +222,7 @@ export default function JobListingPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 bg-[#F8F9FC] min-h-screen">
+    <div className="p-4 sm:p-6 md:p-8 min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
@@ -240,50 +240,169 @@ export default function JobListingPage() {
       </div>
 
       {/* Jobs Table */}
-      <div className="w-full overflow-x-auto rounded-xl shadow bg-white">
-        <div className="min-w-[800px] w-full">
-          {/* Table Header */}
-          <div className="bg-[#4A5568] text-white px-6 py-4">
-            <div className="grid grid-cols-8 gap-4">
-              {['Job Role', 'Status', 'Job Type', 'Posted on', 'Due Date', 'Applicants', 'Needs', 'Action'].map((header) => (
-                <div key={header} className="font-medium">{header}</div>
-              ))}
-            </div>
-          </div>
-          
-          {/* Table Rows */}
-          {jobs.map((job) => (
-            <div key={job.id} className="border-b last:border-0 px-6 py-4 hover:bg-gray-50">
-              <div className="grid grid-cols-8 gap-4 items-center">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                  <span className="font-medium">{job.role}</span>
-                </div>
-                <div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    job.status === 'Live' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {job.status}
-                  </span>
-                </div>
-                <div className="text-gray-600">{job.type}</div>
-                <div className="text-gray-600">{job.posted}</div>
-                <div className="text-gray-600">{job.due}</div>
-                <div className="text-gray-600">{job.applicants}</div>
-                <div className="text-gray-600">{job.needs}</div>
-                <div>
-                  {job.status === 'Closed' ? (
-                    <Button 
-                      size="sm" 
-                      disabled 
-                      className="bg-gray-300 text-gray-500 cursor-not-allowed text-xs px-3 py-1.5 rounded-full"
+      <div className="w-full">
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full border-separate border-spacing-0">
+            {/* Table Header */}
+            <thead>
+              <tr className="bg-slate-600 text-white">
+                {['Job Role', 'Status', 'Job Type', 'Posted on', 'Due Date', 'Applicants', 'Needs', 'Action'].map((header) => (
+                  <th
+                    key={header}
+                    className="px-6 py-3 text-left text-sm font-medium whitespace-nowrap"
+                  >
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            
+            {/* Table Body */}
+            <tbody className="bg-white">
+              {jobs.map((job) => (
+                <tr key={job.id} className="hover:bg-gray-50/50 border-b border-gray-100">
+                  {/* Job Role with Icon */}
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <div className="w-4 h-4 bg-orange-500 rounded"></div>
+                      </div>
+                      <span className="font-medium text-gray-900 text-sm">
+                        {job.role}
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Status */}
+                  <td className="px-6 py-4">
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        job.status === 'Live'
+                          ? 'bg-white text-gray-800 border border-gray-200'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
                     >
-                      Review Applicants
+                      {job.status === 'Live' && <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></div>}
+                      {job.status}
+                      {job.status === 'Live' && <div className="ml-1 text-gray-500 text-xs">▼</div>}
+                    </span>
+                  </td>
+
+                  {/* Job Type */}
+                  <td className="px-6 py-2 text-gray-600 text-sm">
+                    {job.type}
+                  </td>
+
+                  {/* Posted On */}
+                  <td className="px-6 py-2 text-gray-600 text-sm">
+                    {job.posted}
+                  </td>
+
+                  {/* Due Date */}
+                  <td className="px-6 py-2 text-gray-600 text-sm">
+                    {job.due}
+                  </td>
+
+                  {/* Applicants */}
+                  <td className="px-6 py-2 text-gray-900 font-medium text-sm text-center">
+                    {job.applicants}
+                  </td>
+
+                  {/* Needs */}
+                  <td className="px-6 py-2 text-gray-600 text-sm">
+                    {job.needs}
+                  </td>
+
+                  {/* Action */}
+                  <td className="px-6 py-4">
+                    {job.status === 'Closed' ? (
+                      <Button
+                        size="sm"
+                        disabled
+                        className="bg-gray-300 text-gray-500 cursor-not-allowed text-xs px-2 py-1 rounded-full"
+                      >
+                        Closed
+                      </Button>
+                    ) : (
+                      <Link href={`/job-listing/${job.id}`}>
+                        <Button
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700 text-xs px-2 py-1 rounded-full text-white"
+                        >
+                          Review Applicants
+                        </Button>
+                      </Link>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-4">
+          {jobs.map((job) => (
+            <div key={job.id} className="p-4 space-y-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <div className="w-6 h-6 bg-orange-500 rounded"></div>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-900">{job.role}</h3>
+                  <p className="text-sm text-gray-500">{job.type}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-gray-500">Status:</span>
+                  <div className="mt-1">
+                    <span
+                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        job.status === 'Live'
+                          ? 'bg-white text-gray-800 border border-gray-200'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {job.status === 'Live' && <div className="w-2 h-2 bg-green-500 rounded-full mr-1.5"></div>}
+                      {job.status}
+                      {job.status === 'Live' && <div className="ml-1.5 text-gray-500">▼</div>}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-gray-500">Applicants:</span>
+                  <p className="font-medium text-gray-900">{job.applicants}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Posted:</span>
+                  <p className="font-medium text-gray-900">{job.posted}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Due:</span>
+                  <p className="font-medium text-gray-900">{job.due}</p>
+                </div>
+              </div>
+              
+              <div className="pt-2">
+                <div className="w-full">
+                  {job.status === 'Closed' ? (
+                    <Button
+                      size="sm"
+                      disabled
+                      className="w-full bg-gray-300 text-gray-500 cursor-not-allowed text-sm px-4 py-2 rounded-full"
+                    >
+                      Closed
                     </Button>
                   ) : (
                     <Link href={`/job-listing/${job.id}`}>
-                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-xs px-3 py-1.5 rounded-full">
-                        {job.action}
+                      <Button
+                        size="sm"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-sm px-4 py-2 rounded-full text-white"
+                      >
+                        Review Applicants
                       </Button>
                     </Link>
                   )}

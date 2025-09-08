@@ -12,7 +12,7 @@ export default function JobListingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-[#F8F9FC] min-h-screen">
+    <div className=" min-h-screen">
       {children}
     </div>
   );

@@ -492,23 +492,6 @@ export default function EventPage() {
       filtered = filtered.filter((app) => app.type === filterType);
     }
 
-    // Filter by date range
-    if (startDate || endDate) {
-      filtered = filtered.filter((app) => {
-        const appliedDate = new Date(app.appliedDate);
-        const start = startDate ? new Date(startDate) : null;
-        const end = endDate ? new Date(endDate) : null;
-
-        if (start && end) {
-          return appliedDate >= start && appliedDate <= end;
-        } else if (start) {
-          return appliedDate >= start;
-        } else if (end) {
-          return appliedDate <= end;
-        }
-        return true;
-      });
-    }
 
     return filtered;
   };
@@ -1248,7 +1231,7 @@ export default function EventPage() {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen p-4 md:p-6">
+    <div className=" min-h-screen p-4 md:p-6">
       {loading ? (
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
@@ -1359,32 +1342,81 @@ export default function EventPage() {
             >
               <svg
                 className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
+                fill="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
+                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M8 10h3V6h2v4h3l-4 4-4-4z"/>
+                <rect x="6" y="16" width="12" height="2" rx="1"/>
               </svg>
             </button>
-            <button
-              className={`flex items-center gap-2 px-4 py-2 text-sm rounded-full transition-all duration-200 ${
-                startDate || endDate
-                  ? "bg-blue-50 border border-blue-300 text-blue-700 hover:bg-blue-100 hover:border-blue-400"
-                  : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400"
-              }`}
-              onClick={() => setIsDateFilterOpen(!isDateFilterOpen)}
-            >
-              <Filter className="w-4 h-4" />
-              Filter
-              {(startDate || endDate) && (
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+              <div className="relative">
+              <button
+                className={`flex items-center gap-2 px-6 py-2 text-sm rounded-full border-2 transition-all duration-200 ${
+                  startDate || endDate
+                    ? "bg-white border-blue-300 text-blue-700 hover:bg-blue-50"
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                }`}
+                onClick={() => setIsDateFilterOpen(!isDateFilterOpen)}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                Filters
+                {(startDate || endDate) && (
+                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                )}
+              </button>
+              
+              {/* Filter Dropdown */}
+              {isDateFilterOpen && (
+                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 w-80">
+                  <div className="p-4">
+                    <h3 className="text-sm font-semibold mb-3">Filter Options</h3>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+                        <input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
+                        <input
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          onClick={() => {
+                            setStartDate("");
+                            setEndDate("");
+                          }}
+                          className="flex-1 px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          onClick={() => setIsDateFilterOpen(false)}
+                          className="flex-1 px-3 py-2 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
           </div>
         </div>
       )}
@@ -1401,32 +1433,81 @@ export default function EventPage() {
             >
               <svg
                 className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
+                fill="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
+                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M8 10h3V6h2v4h3l-4 4-4-4z"/>
+                <rect x="6" y="16" width="12" height="2" rx="1"/>
               </svg>
             </button>
-            <button
-              className={`flex items-center gap-2 px-4 py-2 text-sm rounded-full transition-all duration-200 ${
-                startDate || endDate
-                  ? "bg-blue-50 border border-blue-300 text-blue-700 hover:bg-blue-100 hover:border-blue-400"
-                  : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400"
-              }`}
-              onClick={() => setIsDateFilterOpen(!isDateFilterOpen)}
-            >
-              <Filter className="w-4 h-4" />
-              Filter
-              {(startDate || endDate) && (
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+            <div className="relative">
+              <button
+                className={`flex items-center gap-2 px-6 py-2 text-sm rounded-full border-2 transition-all duration-200 ${
+                  startDate || endDate
+                    ? "bg-white border-blue-300 text-blue-700 hover:bg-blue-50"
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                }`}
+                onClick={() => setIsDateFilterOpen(!isDateFilterOpen)}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                Filters
+                {(startDate || endDate) && (
+                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                )}
+              </button>
+              
+              {/* Filter Dropdown */}
+              {isDateFilterOpen && (
+                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 w-80">
+                  <div className="p-4">
+                    <h3 className="text-sm font-semibold mb-3">Filter Options</h3>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+                        <input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
+                        <input
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          onClick={() => {
+                            setStartDate("");
+                            setEndDate("");
+                          }}
+                          className="flex-1 px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          onClick={() => setIsDateFilterOpen(false)}
+                          className="flex-1 px-3 py-2 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
           </div>
         </div>
       )}
@@ -1457,32 +1538,81 @@ export default function EventPage() {
             >
               <svg
                 className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
+                fill="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
+                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M8 10h3V6h2v4h3l-4 4-4-4z"/>
+                <rect x="6" y="16" width="12" height="2" rx="1"/>
               </svg>
             </button>
-            <button
-              className={`flex items-center gap-2 px-4 py-2 text-sm rounded-full transition-all duration-200 ${
-                startDate || endDate
-                  ? "bg-blue-50 border border-blue-300 text-blue-700 hover:bg-blue-100 hover:border-blue-400"
-                  : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400"
-              }`}
-              onClick={() => setIsDateFilterOpen(!isDateFilterOpen)}
-            >
-              <Filter className="w-4 h-4" />
-              Filter
-              {(startDate || endDate) && (
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+            <div className="relative">
+              <button
+                className={`flex items-center gap-2 px-6 py-2 text-sm rounded-full border-2 transition-all duration-200 ${
+                  startDate || endDate
+                    ? "bg-white border-blue-300 text-blue-700 hover:bg-blue-50"
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                }`}
+                onClick={() => setIsDateFilterOpen(!isDateFilterOpen)}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                Filters
+                {(startDate || endDate) && (
+                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                )}
+              </button>
+              
+              {/* Filter Dropdown */}
+              {isDateFilterOpen && (
+                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 w-80">
+                  <div className="p-4">
+                    <h3 className="text-sm font-semibold mb-3">Filter Options</h3>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+                        <input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
+                        <input
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          onClick={() => {
+                            setStartDate("");
+                            setEndDate("");
+                          }}
+                          className="flex-1 px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          onClick={() => setIsDateFilterOpen(false)}
+                          className="flex-1 px-3 py-2 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
           </div>
         </div>
       )}
@@ -1499,105 +1629,86 @@ export default function EventPage() {
             >
               <svg
                 className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
+                fill="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
+                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M8 10h3V6h2v4h3l-4 4-4-4z"/>
+                <rect x="6" y="16" width="12" height="2" rx="1"/>
               </svg>
             </button>
-            <button
-              className={`flex items-center gap-2 px-4 py-2 text-sm rounded-full transition-all duration-200 ${
-                startDate || endDate
-                  ? "bg-blue-50 border border-blue-300 text-blue-700 hover:bg-blue-100 hover:border-blue-400"
-                  : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400"
-              }`}
-              onClick={() => setIsDateFilterOpen(!isDateFilterOpen)}
-            >
-              <Filter className="w-4 h-4" />
-              Filter
-              {(startDate || endDate) && (
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+            <div className="relative">
+              <button
+                className={`flex items-center gap-2 px-6 py-2 text-sm rounded-full border-2 transition-all duration-200 ${
+                  startDate || endDate
+                    ? "bg-white border-blue-300 text-blue-700 hover:bg-blue-50"
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                }`}
+                onClick={() => setIsDateFilterOpen(!isDateFilterOpen)}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                Filters
+                {(startDate || endDate) && (
+                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                )}
+              </button>
+              
+              {/* Filter Dropdown */}
+              {isDateFilterOpen && (
+                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 w-80">
+                  <div className="p-4">
+                    <h3 className="text-sm font-semibold mb-3">Filter Options</h3>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+                        <input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
+                        <input
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          onClick={() => {
+                            setStartDate("");
+                            setEndDate("");
+                          }}
+                          className="flex-1 px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          onClick={() => setIsDateFilterOpen(false)}
+                          className="flex-1 px-3 py-2 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Date Filter Modal */}
-      {isDateFilterOpen && (
-        <div className="bg-white border border-gray-200 rounded-lg p-3 mb-4 shadow-sm max-w-md">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-900">
-              Filter by Date
-            </h3>
-            <button
-              onClick={() => setIsDateFilterOpen(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                From
-              </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                To
-              </label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 mt-3">
-            <button
-              onClick={() => {
-                setStartDate("");
-                setEndDate("");
-              }}
-              className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800 border border-gray-300 rounded hover:bg-gray-50"
-            >
-              Clear
-            </button>
-            <button
-              onClick={() => setIsDateFilterOpen(false)}
-              className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              Apply
-            </button>
-          </div>
-        </div>
-      )}
+     
 
       {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

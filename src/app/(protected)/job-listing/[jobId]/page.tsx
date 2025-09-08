@@ -726,16 +726,13 @@ export default function JobDetailPage() {
 
         {/* Job Status, Buttons, and Dropdown */}
         <div className="flex items-center gap-2 flex-wrap" ref={statusRef}>
-          <button
-            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
-              jobStatus === "Live"
-                ? "bg-green-100 text-green-800"
-                : "bg-gray-200 text-gray-600"
-            }`}
-            onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
-          >
-            {jobStatus} ▼
-          </button>
+          <div className="flex items-center gap-2 px-3 py-1.5 border-2 border-green-300 rounded-full bg-white hover:bg-green-50 transition-colors cursor-pointer">
+            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+            <span className="text-sm font-medium text-gray-700">{jobStatus}</span>
+            <svg className="w-4 h-4 text-gray-400 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
           {statusDropdownOpen && (
             <div className="absolute mt-1 bg-white border rounded shadow z-10 w-32">
               <button

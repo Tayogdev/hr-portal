@@ -39,16 +39,21 @@ export default function LoginPage() {
         return;
       }
 
+      // Clear any existing errors first
+      setError(null);
+      
       // Add small delay to allow session to stabilize
-      await new Promise(res => setTimeout(res, 300));
+      await new Promise(res => setTimeout(res, 500));
 
       const session = await getSession();
 
       if (session && session.user?.isRegistered) {
         router.push('/dashboard');
-      } else {
+      } else if (session && !session.user?.isRegistered) {
+        // User exists but not registered
         setError('User not found. Please register on tayog.in to access this dashboard.');
       }
+      // Remove the else block that shows "Authentication failed" for successful logins
     } catch (err) {
       logger.error('Unexpected error during login', err as Error, 'LoginPage', {
         provider,
